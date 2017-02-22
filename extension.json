@@ -1,0 +1,45 @@
+{
+	"name": "Auth_remoteuser",
+	"version": "2.0.0",
+	"requires": {
+		"MediaWiki": ">= 1.27.0"
+	},
+	"config": {
+		"_prefix": "wgAuth_remoteuser_",
+		"EnvVarName": "REMOTE_USER",
+		"Priority": 50,
+		"ChangeUser": false,
+		"RemoveAuthPagesAndLinks": true,
+		"AutoCreateUser": true,
+		"FacetUserName": [],
+		"UserProps": [],
+		"ForceUserProps": true
+	},
+	"type": "other",
+	"author": [
+		"[[mw:User:Otheus|Otheus Shelling]]",
+		"[http://www.csh.rit.edu/~gicode Rusty Burchfield]",
+		"[[mw:User:VibroAxe|James Kinsman]]",
+		"Daniel Thomas",
+		"Ian Ward Comfort",
+		"[[mw:User:MarkAHershberger|Mark A. Hershberger]]",
+		"[https://wikitech.wikimedia.org/wiki/User:Enst80 Stefan Engelhardt]"
+	],
+	"url": "https://www.mediawiki.org/wiki/Extension:Auth_remoteuser",
+	"descriptionmsg": "auth_remoteuser-desc",
+	"MessagesDirs": {
+		"Auth_remoteuser": [
+			"i18n"
+		]
+	},
+	"license-name": "GPL-2.0+",
+	"SessionProviders": {
+		"Auth_remoteuser": {
+			"class": "MediaWiki\\Extensions\\Auth_remoteuser\\EnvVarSessionProvider"
+		}
+	},
+	"AutoloadClasses": {
+		"MediaWiki\\Extensions\\Auth_remoteuser\\EnvVarSessionProvider": "EnvVarSessionProvider.php"
+	},
+	"manifest_version": 1
+}
