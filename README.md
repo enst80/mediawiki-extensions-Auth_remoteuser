@@ -69,7 +69,7 @@ have to set explicitly are marked with the `// default` comment.
             '/_/' => ' ',                    // replace underscores with spaces
             '/@domain.example.com$/' => '',  // strip Kerberos principal from back
             '^/domain\\\\/' => '',           // strip NTLM domain from front
-            'johndoe' => 'Admin'             // rewrite user johndoe to user Admin
+            '/johndoe/' => 'Admin'           // rewrite user johndoe to user Admin
         );
 
   If you need further processing, maybe blacklisting some usernames or
