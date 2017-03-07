@@ -68,7 +68,7 @@ have to set explicitly are marked with the `// default` comment.
         $wgAuth_remoteuser_FacetUserName = array(
             '/_/' => ' ',                    // replace underscores with spaces
             '/@domain.example.com$/' => '',  // strip Kerberos principal from back
-            '^/domain\\\\/' => '',           // strip NTLM domain from front
+            '/^domain\\\\/' => '',           // strip NTLM domain from front
             '/johndoe/' => 'Admin'           // rewrite user johndoe to user Admin
         );
 
@@ -177,7 +177,7 @@ this:
     wfLoadExtension( 'Auth_remoteuser' );
     $wgAuth_remoteuser_FacetUserName = array(
         '/@NETBIOSDOMAIN$/' => '',
-        '^NETBIOSDOMAIN/' => ''
+        '/^NETBIOSDOMAIN\\\\/' => ''
     );
     $wgAuth_remoteuser_UserProps = array(
         'realname' => $_SERVER[ 'AUTHENTICATE_DISPLAYNAME' ],
