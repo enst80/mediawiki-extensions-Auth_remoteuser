@@ -141,6 +141,21 @@ have to set explicitly are marked with the `// default` comment.
             'enotifminoredits' => 1
         );
 
+  You can specify an anonymous function for the values too. These closures
+  getting called when the actual value is needed, and not when it is declared
+  inside your `LocalSettings.php`. The first parameter given to the function
+  will be the value of the raw environment variable value (not beeing processed
+  by the `Auth_remoteuser_processEnvVar` hook). Take the following as an example
+  in which a shellscript is getting executed only when a user is created and not
+  on every page reload:
+
+        $wgAuth_remoteuser_ForceUserProps = false;
+        $wgAuth_remoteuser_UserProps = array(
+            'email' => function( $name ) {
+                return shell_exec( "/usr/bin/get_mail.sh '$name'" );
+            }
+        )
+
 * If you have user properties specified (see `UserProps` config above), then
   you can set them for new users only (see `AutoCreateUser` config) or force
   their setting. For example if your users email is specified by an external

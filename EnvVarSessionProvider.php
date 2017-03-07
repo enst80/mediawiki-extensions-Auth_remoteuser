@@ -35,6 +35,7 @@ use Hooks;
 use GlobalVarConfig;
 use Sanitizer;
 use User;
+use Closure;
 
 /**
  * Session provider for the Auth_remoteuser extension.
@@ -271,7 +272,8 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 				$sessionInfo = new SessionInfo( $sessionInfo->getPriority(), [
 					"copyFrom" => $sessionInfo,
 					"metadata" => [
-						"userId" => $userInfo->getId()
+						"userId" => $userInfo->getId(),
+						"envVarValue" => getenv( $envVarName )
 						]
 					]
 				);
@@ -310,6 +312,8 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 		# the one used for this session, then add additional information to the
 		# user object. They can only differ if our property `switchUser` is true.
 		if ( $this->userProps && $info->getUserInfo()->getId() === $metadata[ 'userId' ] ) {
+
+			$this->userProps[ 'EnvVarSessionProvider_EnvVarValue' ] = $metadata[ 'envVarValue' ];
 
 			# Force the setting of our user properties on each request virtually
 			# overwrites the users own preference settings. Useful if users real name
@@ -399,7 +403,10 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 	 * given parameter specifies an array of key => value pairs, where the keys
 	 * `realname` and `email` are taken for the users real name and email address.
 	 * All other keys in that array will be handled as an option into the users
-	 * preferences.
+	 * preferences. Each value can also be of type Closure to get called when the
+	 * value gets evaluated. This type of late binding should then return the real
+	 * value and could be useful, if you want to delegate the execution of code to
+	 * a point where it is really needed and not inside `LocalSettings.php`.
 	 *
 	 * @param array $properties Array of user information and preferences.
 	 * @param User $user
@@ -413,7 +420,18 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 
 		if ( is_array( $properties ) && $user instanceof User && $autoCreated ) {
 			foreach ( $properties as $option => $value ) {
+
+				# If the given value is a closure, call it to get the value.
+				if ( $value instanceof Closure ) {
+					$value = call_user_func(
+						$value,
+						$properties[ 'EnvVarSessionProvider_EnvVarValue' ]
+					);
+				}
+
 				switch ( $option ) {
+					case 'EnvVarSessionProvider_EnvVarValue':
+						break;
 					case 'realname':
 						if ( is_string( $value ) ) {
 							$user->setRealName( $value );
