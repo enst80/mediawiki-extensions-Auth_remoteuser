@@ -115,14 +115,14 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 	/**
 	 * The constructor processes the extension configuration.
 	 *
-	 * @see $wgAuth_remoteuser_EnvVarName
-	 * @see $wgAuth_remoteuser_Priority
-	 * @see $wgAuth_remoteuser_ChangeUser
-	 * @see $wgAuth_remoteuser_RemoveAuthPagesAndLinks
-	 * @see $wgAuth_remoteuser_AutoCreateUser
-	 * @see $wgAuth_remoteuser_FacetUserName
-	 * @see $wgAuth_remoteuser_UserProps
-	 * @see $wgAuth_remoteuser_ForceUserProps
+	 * @see $wgAuthRemoteuserEnvVarName
+	 * @see $wgAuthRemoteuserPriority
+	 * @see $wgAuthRemoteuserChangeUser
+	 * @see $wgAuthRemoteuserRemoveAuthPagesAndLinks
+	 * @see $wgAuthRemoteuserAutoCreateUser
+	 * @see $wgAuthRemoteuserFacetUserName
+	 * @see $wgAuthRemoteuserUserProps
+	 * @see $wgAuthRemoteuserForceUserProps
 	 * @since 2.0.0
 	 */
 	public function __construct( $params = [] ) {
@@ -130,7 +130,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 		# Process our extension specific configuration, but don't overwrite our
 		# parents $this->config property, because doing so will clash with the
 		# SessionManager setting of that property due to a different prefix used.
-		$conf = new GlobalVarConfig( 'wgAuth_remoteuser_' );
+		$conf = new GlobalVarConfig( 'wgAuthRemoteuser' );
 
 		# Specify the priority we will give to SessionInfo objects. Validation will
 		# be done by our parents constructor.

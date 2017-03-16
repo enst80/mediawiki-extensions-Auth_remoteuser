@@ -31,41 +31,41 @@ Configuration
 -------------
 
 You can adjust the behaviour of the extension to suit your needs by using a
-set of global configuration variables all starting with `$wgAuth_remoteuser_`.
+set of global configuration variables all starting with `$wgAuthRemoteuser`.
 Just add them to your `LocalSettings.php`. Default values, which you don't
 have to set explicitly are marked with the `// default` comment.
 
 * Set the name(s) of the environment variable(s) to use. This can either be
   a simple string or an array of strings. Examples:
 
-        $wgAuth_remoteuser_EnvVarName = 'REMOTE_USER'; // default
+        $wgAuthRemoteuserEnvVarName = 'REMOTE_USER'; // default
 
-        $wgAuth_remoteuser_EnvVarName = [ 'REMOTE_USER', 'REDIRECT_REMOTE_USER' ];
+        $wgAuthRemoteuserEnvVarName = [ 'REMOTE_USER', 'REDIRECT_REMOTE_USER' ];
 
-        $wgAuth_remoteuser_EnvVarName = 'LOGON_USER';
+        $wgAuthRemoteuserEnvVarName = 'LOGON_USER';
 
 * If you are using other SessionProvider extensions besides this one, you
   have to specify their significance by using an ascending priority:
 
-        $wgAuth_remoteuser_Priority = 50; // default
+        $wgAuthRemoteuserPriority = 50; // default
 
-        $wgAuth_remoteuser_Priority = SessionInfo::MAX_PRIORITY;
+        $wgAuthRemoteuserPriority = SessionInfo::MAX_PRIORITY;
 
 * Indicate wether a new user, authenticated by the webserver and identified
   by this extension, but yet unknown to the wiki should be created or not:
 
-        $wgAuth_remoteuser_AutoCreateUser = true; // default
+        $wgAuthRemoteuserAutoCreateUser = true; // default
 
-        $wgAuth_remoteuser_AutoCreateUser = false;
+        $wgAuthRemoteuserAutoCreateUser = false;
 
 * When you need to process your environment variable value before it can be
   used as an identifier into the wiki username list, for example to strip
   a Kerberos principal from the end or replacing some invalid characters, set
   an array of replacement patterns to the following configuration variable:
 
-        $wgAuth_remoteuser_FacetUserName = array(); // default
+        $wgAuthRemoteuserFacetUserName = array(); // default
 
-        $wgAuth_remoteuser_FacetUserName = array(
+        $wgAuthRemoteuserFacetUserName = array(
             '/_/' => ' ',                    // replace underscores with spaces
             '/@domain.example.com$/' => '',  // strip Kerberos principal from back
             '/^domain\\\\/' => '',           // strip NTLM domain from front
@@ -93,9 +93,9 @@ have to set explicitly are marked with the `// default` comment.
   one identified by the environment variable. You can change this behaviour
   with the following configuration:
 
-        $wgAuth_remoteuser_ChangeUser = false; // default
+        $wgAuthRemoteuserChangeUser = false; // default
 
-        $wgAuth_remoteuser_ChangeUser = true;
+        $wgAuthRemoteuserChangeUser = true;
 
 * As an immutable SessionProvider (see `ChangeUser` config above) all the
   special pages and login/logout links for authentication aren't needed
@@ -103,9 +103,9 @@ have to set explicitly are marked with the `// default` comment.
   example if you are using other session providers besides this one, then
   set the following accordingly:
 
-        $wgAuth_remoteuser_RemoveAuthPagesAndLinks = true; // default
+        $wgAuthRemoteuserRemoveAuthPagesAndLinks = true; // default
 
-        $wgAuth_remoteuser_RemoveAuthPagesAndLinks = false;
+        $wgAuthRemoteuserRemoveAuthPagesAndLinks = false;
 
   Note: If your `RemoveAuthPagesAndLinks` configuration value is set to
   false, then, independent of your setting of `ChangeUser`, the logout
@@ -122,15 +122,15 @@ have to set explicitly are marked with the `// default` comment.
   and email address, while you can specify further key value pairs to get them
   mapped to the users preferences:
 
-        $wgAuth_remoteuser_UserProps = array(); // default
+        $wgAuthRemoteuserUserProps = array(); // default
 
         // set email only
-        $wgAuth_remoteuser_UserProps = array(
+        $wgAuthRemoteuserUserProps = array(
             'email' => $_SERVER[ 'AUTHENTICATE_MAIL' ],
         );
 
         // set real name, email and some preference options
-        $wgAuth_remoteuser_UserProps = array(
+        $wgAuthRemoteuserUserProps = array(
             'realname' => $_SERVER[ 'AUTHENTICATE_DISPLAYNAME' ],
             'email' => $_SERVER[ 'AUTHENTICATE_MAIL' ],
             'language' => 'en',
@@ -147,9 +147,9 @@ have to set explicitly are marked with the `// default` comment.
   source and you don't want the user to change this email inside MediaWiki,
   then set the following configuration variable to true:
 
-        $wgAuth_remoteuser_ForceUserProps = true; // default
+        $wgAuthRemoteuserForceUserProps = true; // default
 
-        $wgAuth_remoteuser_ForceUserProps = false;
+        $wgAuthRemoteuserForceUserProps = false;
 
 
 Migrating from versions prior 2.0.0
@@ -175,11 +175,11 @@ To achieve the same behaviour that configuration has to be rewritten to
 this:
 
     wfLoadExtension( 'Auth_remoteuser' );
-    $wgAuth_remoteuser_FacetUserName = array(
+    $wgAuthRemoteuserFacetUserName = array(
         '/@NETBIOSDOMAIN$/' => '',
         '/^NETBIOSDOMAIN\\\\/' => ''
     );
-    $wgAuth_remoteuser_UserProps = array(
+    $wgAuthRemoteuserUserProps = array(
         'realname' => $_SERVER[ 'AUTHENTICATE_DISPLAYNAME' ],
         'email' => $_SERVER['REMOTE_USER'] . '@example.com',
         'enotifminoredits' => 0,

@@ -5,7 +5,7 @@
 		"MediaWiki": ">= 1.27.0"
 	},
 	"config": {
-		"_prefix": "wgAuth_remoteuser_",
+		"_prefix": "wgAuthRemoteuser",
 		"EnvVarName": "REMOTE_USER",
 		"Priority": 50,
 		"ChangeUser": false,
