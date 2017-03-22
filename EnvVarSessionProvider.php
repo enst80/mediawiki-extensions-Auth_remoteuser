@@ -291,7 +291,8 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 	 * @since 2.0.0
 	 */
 	public function mergeMetadata( array $savedMetadata, array $providedMetadata ) {
-		return $providedMetadata;
+		$savedMetadata[ 'userId' ] = $providedMetadata[ 'userId' ];
+		return parent::mergeMetadata( $savedMetadata, $providedMetadata );
 	}
 
 	/**
