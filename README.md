@@ -73,14 +73,14 @@ have to set explicitly are marked with the `// default` comment.
         );
 
   If you need further processing, maybe blacklisting some usernames or
-  something else, you can use the hook `Auth_remoteuser_processEnvVar`
+  something else, you can use the hook `Auth_remoteuser_filterUserName`
   provided by this extension. Just have a look at mediawikis Hook
   documentation on how to register additional functions to this hook.
   For example, if you need to forbid the automatic login for specific user
   accounts all starting with the same characters, you would implement this
   as follows:
 
-        Hooks::register( 'Auth_remoteuser_processEnvVar',
+        Hooks::register( 'Auth_remoteuser_filterUserName',
             function ( &$userName ) {
                 $needle = 'f_';
                 $length = strlen( $needle );

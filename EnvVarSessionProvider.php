@@ -71,12 +71,13 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 	protected $envVarName;
 
 	/**
-	 * Indicates if the automatic login is optional or forced.
+	 * Indicates if the automatically logged-in user can switch to another local
+	 * account while still beeing identified by the remote variable.
 	 *
 	 * @var boolean
 	 * @since 2.0.0
 	 */
-	protected $changeUser;
+	protected $switchUser;
 
 	/**
 	 * Indicates if special pages related to authentication getting removed by us.
@@ -117,7 +118,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 	 *
 	 * @see $wgAuthRemoteuserEnvVarName
 	 * @see $wgAuthRemoteuserPriority
-	 * @see $wgAuthRemoteuserChangeUser
+	 * @see $wgAuthRemoteuserAllowUserSwitch
 	 * @see $wgAuthRemoteuserRemoveAuthPagesAndLinks
 	 * @see $wgAuthRemoteuserAutoCreateUser
 	 * @see $wgAuthRemoteuserFacetUserName
@@ -165,7 +166,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 			}
 		}
 
-		$this->changeUser = ( $conf->has( 'ChangeUser' ) ) ? (bool)$conf->get( 'ChangeUser' ) : false;
+		$this->switchUser = ( $conf->has( 'AllowUserSwitch' ) ) ? (bool)$conf->get( 'AllowUserSwitch' ) : false;
 
 		$this->removeAuthPagesAndLinks = ( $conf->has( 'RemoveAuthPagesAndLinks' ) ) ? (bool)$conf->get( 'RemoveAuthPagesAndLinks' ) : true;
 
@@ -173,7 +174,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 
 		# The environment variable should be processed before used as an identifier
 		# into the local user database, so set up an according callback to be used
-		# when the `Auth_remoteuser_processEnvVar` hook runs.
+		# when the `Auth_remoteuser_filterUserName` hook runs.
 		#
 		# @see self::facetUserName()
 		if ( $conf->has( 'FacetUserName' ) ) {
@@ -207,7 +208,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 				# domain, replace characters, rewrite to another username or even
 				# blacklist. This can be used by the wiki administrator to adjust this
 				# SessionProvider to his specific needs.
-				if ( !Hooks::run( 'Auth_remoteuser_processEnvVar', [ &$userName ] ) ) {
+				if ( !Hooks::run( 'Auth_remoteuser_filterUserName', [ &$userName ] ) ) {
 					continue;
 				}
 
@@ -256,7 +257,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 				# use the forceUse flag to set our identified user. If we are configured
 				# to forbid user switching, force the usage of our identified user too.
 				if ( !$sessionInfo->getUserInfo() || !$sessionInfo->getUserInfo()->getId()
-					|| ( !$this->changeUser && $sessionInfo->getUserInfo()->getId() !== $userInfo->getId() ) ) {
+					|| ( !$this->switchUser && $sessionInfo->getUserInfo()->getId() !== $userInfo->getId() ) ) {
 					$sessionInfo = new SessionInfo( $sessionInfo->getPriority(), [
 						"copyFrom" => $sessionInfo,
 						"userInfo" => $userInfo,
@@ -307,7 +308,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 
 		# If the user identified by the environment variable is the same as the
 		# the one used for this session, then add additional information to the
-		# user object. They can only differ if our property `changeUser` is true.
+		# user object. They can only differ if our property `switchUser` is true.
 		if ( $this->userProps && $info->getUserInfo()->getId() === $metadata[ 'userId' ] ) {
 
 			# Force the setting of our user properties on each request virtually
@@ -343,7 +344,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 		if ( $this->removeAuthPagesAndLinks ) {
 
 			# Let us remove the `logout` link in any case (independent of our
-			# `changeUser` setting), because using an anonymous user is something we
+			# `switchUser` setting), because using an anonymous user is something we
 			# want to avert while using this extension.
 			Hooks::register( 'PersonalUrls', [
 				function ( &$personalurls, &$title ) {
@@ -353,7 +354,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 				]
 			);
 
-			if ( !$this->changeUser ) {
+			if ( !$this->switchUser ) {
 				Hooks::register( 'SpecialPage_initList', [
 					function ( &$specials ) {
 						foreach ( [
@@ -388,7 +389,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 	 * @since 2.0.0
 	 */
 	public function canChangeUser() {
-		return ( $this->changeUser ) ? parent::canChangeUser() : false;
+		return ( $this->switchUser ) ? parent::canChangeUser() : false;
 	}
 
 	/**
@@ -436,7 +437,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 	 * Helper method to apply replacement patterns to the environment variable
 	 * before using it as an identifier into the local wiki user database.
 	 *
-	 * Method uses the `Auth_remoteuser_processEnvVar` hook.
+	 * Method uses the `Auth_remoteuser_filterUserName` hook.
 	 *
 	 * Some examples:
 	 * ```
@@ -457,7 +458,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 			throw new UnexpectedValueException( __METHOD__ . ' expects an array as parameter.' );
 		}
 
-		Hooks::register( 'Auth_remoteuser_processEnvVar', [
+		Hooks::register( 'Auth_remoteuser_filterUserName', [
 			function ( $replacepatterns, &$username ) {
 
 				$replaced = $username;
