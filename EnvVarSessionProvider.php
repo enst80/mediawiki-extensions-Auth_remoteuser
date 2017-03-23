@@ -273,7 +273,9 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 					"copyFrom" => $sessionInfo,
 					"metadata" => [
 						"userId" => $userInfo->getId(),
-						"envVarValue" => getenv( $envVarName )
+						"userNameRaw" => getenv( $envVarName ),
+						"userNameFiltered" => $userName,
+						"userNameCanonicalized" => $userInfo->getName()
 						]
 					]
 				);
@@ -291,10 +293,16 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 	/**
 	 * Never use the stored metadata and return the provided one in any case.
 	 *
+	 * But let our parents implementation of this method decide on his own for the
+	 * other members.
+	 *
 	 * @since 2.0.0
 	 */
 	public function mergeMetadata( array $savedMetadata, array $providedMetadata ) {
-		$savedMetadata[ 'userId' ] = $providedMetadata[ 'userId' ];
+		$keys = [ 'userId', 'userNameRaw', 'userNameFiltered', 'userNameCanonicalized' ];
+		foreach ( $keys as $key ) {
+			$savedMetadata[ $key ] = $providedMetadata[ $key ];
+		}
 		return parent::mergeMetadata( $savedMetadata, $providedMetadata );
 	}
 
@@ -313,7 +321,10 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 		# user object. They can only differ if our property `switchUser` is true.
 		if ( $this->userProps && $info->getUserInfo()->getId() === $metadata[ 'userId' ] ) {
 
-			$this->userProps[ 'EnvVarSessionProvider_EnvVarValue' ] = $metadata[ 'envVarValue' ];
+			$container = [
+				'properties' => $this->userProps,
+				'metadata' => $metadata
+			];
 
 			# Force the setting of our user properties on each request virtually
 			# overwrites the users own preference settings. Useful if users real name
@@ -324,7 +335,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 			if ( $this->forceUserProps ) {
 
 				self::setUserProps(
-					$this->userProps,
+					$container,
 					$info->getUserInfo()->getUser(),
 					true
 				);
@@ -337,7 +348,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 				Hooks::register(
 					'LocalUserCreated', [
 						__CLASS__ . '::setUserProps',
-						$this->userProps
+						$container
 					]
 				);
 
@@ -400,7 +411,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 	 * Helper method to supplement (new local) users with additional information.
 	 *
 	 * This method can be used as a callback into the `LocalUserCreated` hook. The
-	 * given parameter specifies an array of key => value pairs, where the keys
+	 * first parameter contains an array of key => value pairs, where the keys
 	 * `realname` and `email` are taken for the users real name and email address.
 	 * All other keys in that array will be handled as an option into the users
 	 * preferences. Each value can also be of type Closure to get called when the
@@ -408,7 +419,9 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 	 * value and could be useful, if you want to delegate the execution of code to
 	 * a point where it is really needed and not inside `LocalSettings.php`.
 	 *
-	 * @param array $properties Array of user information and preferences.
+	 * @param array $container Key value store with the following elements:
+	 *    `properties` => Array of user information and preferences.
+	 *    `metadata` => Provider metadata of the current request.
 	 * @param User $user
 	 * @param boolean $autoCreated
 	 * @see User::setRealName()
@@ -416,22 +429,27 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 	 * @see User::setOption()
 	 * @since 2.0.0
 	 */
-	public static function setUserProps( $properties, $user, $autoCreated = false ) {
+	public static function setUserProps( $container, $user, $autoCreated = false ) {
 
-		if ( is_array( $properties ) && $user instanceof User && $autoCreated ) {
-			foreach ( $properties as $option => $value ) {
+		if ( is_array( $container ) && isset( $container[ 'properties' ] ) && is_array( $container[ 'properties' ] ) && $user instanceof User && $autoCreated ) {
 
-				# If the given value is a closure, call it to get the value.
+			# Create a copy of our provider metadata.
+			$metadata = ( isset( $container[ 'metadata' ] ) ) ? [] + $container[ 'metadata' ] : [];
+
+			foreach ( $container[ 'properties' ] as $option => $value ) {
+
+				# If the given value is a closure, call it to get the value. All of our
+				# provider metadata is exposed to this function as first parameter. But
+				# because it is given by reference we created a copy of it beforehand to
+				# not let the function change our metadata.
 				if ( $value instanceof Closure ) {
 					$value = call_user_func(
 						$value,
-						$properties[ 'EnvVarSessionProvider_EnvVarValue' ]
+						$metadata
 					);
 				}
 
 				switch ( $option ) {
-					case 'EnvVarSessionProvider_EnvVarValue':
-						break;
 					case 'realname':
 						if ( is_string( $value ) ) {
 							$user->setRealName( $value );
