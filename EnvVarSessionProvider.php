@@ -340,7 +340,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 					);
 				}
 
-				# Store id of user identified by environment variable in the provider
+				# Store info about user identified by environment variable in the provider
 				# metadata.
 				$sessionInfo = new SessionInfo( $sessionInfo->getPriority(), [
 					"copyFrom" => $sessionInfo,
@@ -348,7 +348,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 						"userId" => $userInfo->getId(),
 						"userNameRaw" => getenv( $envVarName ),
 						"userNameFiltered" => $userName,
-						"userNameCanonicalized" => $userInfo->getName()
+						"userNameCanonicalized" => $sessionInfo->getUserInfo()->getName()
 						]
 					]
 				);
