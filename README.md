@@ -93,11 +93,11 @@ have to set explicitly are marked with the `// default` comment.
   one identified by the environment variable. You can change this behaviour
   with the following configuration:
 
-        $wgAuthRemoteuserChangeUser = false; // default
+        $wgAuthRemoteuserAllowUserSwitch = false; // default
 
-        $wgAuthRemoteuserChangeUser = true;
+        $wgAuthRemoteuserAllowUserSwitch = true;
 
-* As an immutable SessionProvider (see `ChangeUser` config above) all the
+* As an immutable SessionProvider (see `AllowUserSwitch` config above) all
   special pages and login/logout links for authentication aren't needed
   anymore by the identified user. If you still want them to be shown, for
   example if you are using other session providers besides this one, then
@@ -108,10 +108,10 @@ have to set explicitly are marked with the `// default` comment.
         $wgAuthRemoteuserRemoveAuthPagesAndLinks = false;
 
   Note: If your `RemoveAuthPagesAndLinks` configuration value is set to
-  false, then, independent of your setting of `ChangeUser`, the logout
+  false, then, independent of your setting of `AllowUserSwitch`, the logout
   button in the users personal urls bar will be removed. Because a logout
   is the same as using an anonymous user, which is a case we want to avert
-  when using this extension. If `ChangeUser` is set to true he can still
+  when using this extension. If `AllowUserSwitch` is set to true he can still
   logging in by calling the special page `Special:UserLogin` directly (or
   from the link on `Special:SpecialPages`).
 
