@@ -145,9 +145,9 @@ have to set explicitly are marked with the `// default` comment.
   getting called when the actual value is needed, and not when it is declared
   inside your `LocalSettings.php`. The first parameter given to the function
   will be the value of the raw environment variable value (not beeing processed
-  by the `Auth_remoteuser_processEnvVar` hook). Take the following as an example
-  in which a shellscript is getting executed only when a user is created and not
-  on every page reload:
+  by the `Auth_remoteuser_filterUserName` hook). Take the following as an
+  example in which a shellscript is getting executed only when a user is
+  created and not on every page reload:
 
         $wgAuth_remoteuser_ForceUserProps = false;
         $wgAuth_remoteuser_UserProps = array(
