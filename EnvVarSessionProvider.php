@@ -200,7 +200,7 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 		# Turning all off (no autologin) will be attained by evaluating nothing.
 		#
 		# @deprecated 2.0.0
-		if ( $conf->has( 'Authz' ) && $conf->get( 'Authz' ) ) {
+		if ( $conf->has( 'Authz' ) && ! $conf->get( 'Authz' ) ) {
 			$this->envVarName = [];
 		}
 
