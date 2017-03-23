@@ -395,11 +395,15 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 	}
 
 	/**
-	 * Can the client use another local user as the one we have identified.
+	 * We do support user switching (as inherited by our parent).
 	 *
-	 * With our ChangeUser configuration value we do support the behaviour of
-	 * Auth_remoteuser versions prior 2.0.0, where changing the local user wasn't
-	 * possible.
+	 * This setting let us support the behaviour of Auth_remoteuser versions prior
+	 * 2.0.0, where switching the logged-in local user (as denoted by the wiki
+	 * database) wasn't possible.
+	 *
+	 * User switching is useful when your remote user is tied to a local wiki user,
+	 * but needs access as another local user, e.g. a bot account, which in itself
+	 * can never be identified as any remote user.
 	 *
 	 * @since 2.0.0
 	 */
