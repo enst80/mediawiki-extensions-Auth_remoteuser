@@ -117,6 +117,15 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 	/**
 	 * The constructor processes the extension configuration.
 	 *
+	 * Legacy extension parameters are still fully supported, but new parameters
+	 * are taking precedence over legacy ones. List of legacy parameters:
+	 * * `$wgAuthRemoteuserAuthz`      equivalent to disabling the extension
+	 * * `$wgAuthRemoteuserName`       superseded by `$wgRemoteuserUserProps`
+	 * * `$wgAuthRemoteuserMail`       superseded by `$wgRemoteuserUserProps`
+	 * * `$wgAuthRemoteuserNotify`     superseded by `$wgRemoteuserUserProps`
+	 * * `$wgAuthRemoteuserDomain`     superseded by `$wgRemoteuserFacetUserName`
+	 * * `$wgAuthRemoteuserMailDomain` superseded by `$wgRemoteuserUserProps`
+	 *
 	 * @see $wgAuthRemoteuserEnvVarName
 	 * @see $wgAuthRemoteuserPriority
 	 * @see $wgAuthRemoteuserAllowUserSwitch
@@ -186,6 +195,70 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 
 		$this->forceUserProps = ( $conf->has( 'ForceUserProps' ) ) ? (bool)$conf->get( 'ForceUserProps' ) : true;
 
+		# Evaluation of legacy parameter `$wgAuthRemoteuserAuthz`.
+		#
+		# Turning all off (no autologin) will be attained by evaluating nothing.
+		#
+		# @deprecated 2.0.0
+		if ( $conf->has( 'Authz' ) && $conf->get( 'Authz' ) ) {
+			$this->envVarName = [];
+		}
+
+		# Evaluation of legacy parameter `$wgAuthRemoteuserName`.
+		#
+		# @deprecated 2.0.0
+		if ( $conf->has( 'Name' ) && is_string( $conf->get( 'Name' ) ) && $conf->get( 'Name' ) !== '' ) {
+			$this->userProps += [ 'realname' => $conf->get( 'Name' ) ];
+		}
+
+		# Evaluation of legacy parameter `$wgAuthRemoteuserMail`.
+		#
+		# @deprecated 2.0.0
+		if ( $conf->has( 'Mail' ) && is_string( $conf->get( 'Mail' ) ) && $conf->get( 'Mail' ) !== '' ) {
+			$this->userProps += [ 'email' => $conf->get( 'Mail' ) ];
+		}
+
+		# Evaluation of legacy parameter `$wgAuthRemoteuserNotify`.
+		#
+		# @deprecated 2.0.0
+		if ( $conf->has( 'Notify' ) ) {
+			$notify = $conf->get( 'Notify' ) ? 1 : 0;
+			$this->userProps += [
+				'enotifminoredits' => $notify,
+				'enotifrevealaddr' => $notify,
+				'enotifusertalkpages' => $notify,
+				'enotifwatchlistpages' => $notify
+			];
+		}
+
+		# Evaluation of legacy parameter `$wgAuthRemoteuserDomain`.
+		#
+		# Ignored when the new equivalent `$wgAuthRemoteuserFacetUserName` is set.
+		#
+		# @deprecated 2.0.0
+		if ( $conf->has( 'Domain' ) && is_string( $conf->get( 'Domain' ) ) && $conf->get( 'Domain' ) !== '' && ! $conf->has( 'FacetUserName' ) ) {
+			self::facetUserName( [
+				'/@' . $conf->get( 'Domain' ) . '$/' => '',
+				'/^' . $conf->get( 'Domain' ) . '\\\\/' => ''
+				]
+			);
+		}
+
+		# Evaluation of legacy parameter `$wgAuthRemoteuserMailDomain`.
+		#
+		# Can't be used directly at this point of execution until we have our a valid
+		# user object with the according user name. Therefore we have to use the
+		# closure feature of our user property values to defer the evaluation.
+		#
+		# @deprecated 2.0.0
+		if ( $conf->has( 'MailDomain' ) && is_string ( $conf->get( 'MailDomain' ) ) && $conf->get( 'MailDomain' ) !== '' ) {
+			$domain = $conf->get( 'MailDomain' );
+			$this->userProps += [
+				'email' => function( $metadata ) use( $domain )  {
+					return $metadata[ 'userNameRaw' ] . '@' . $domain;
+				}
+			];
+		}
 	}
 
 	/**
