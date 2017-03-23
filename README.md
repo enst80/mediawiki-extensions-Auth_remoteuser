@@ -149,13 +149,14 @@ have to set explicitly are marked with the `// default` comment.
   * `userNameRaw` - value as given by the environment
   * `userNameFiltered` - after running `Auth_remoteuser_filterUserName` hook
   * `userNameCanonicalized` - representation in the local wiki database
+
   Take the following as an example in which a shellscript is getting executed
   only when a user is created and not on every page reload:
 
         $wgAuth_remoteuser_ForceUserProps = false;
         $wgAuth_remoteuser_UserProps = array(
             'email' => function( $data ) {
-		$name = $data[ 'userNameRaw' ];
+                $name = $data[ 'userNameRaw' ];
                 return shell_exec( "/usr/bin/get_mail.sh '$name'" );
             }
         )
