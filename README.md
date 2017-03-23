@@ -144,14 +144,18 @@ have to set explicitly are marked with the `// default` comment.
   You can specify an anonymous function for the values too. These closures
   getting called when the actual value is needed, and not when it is declared
   inside your `LocalSettings.php`. The first parameter given to the function
-  will be the value of the raw environment variable value (not beeing processed
-  by the `Auth_remoteuser_filterUserName` hook). Take the following as an
-  example in which a shellscript is getting executed only when a user is
-  created and not on every page reload:
+  is an associative array with the following keys:
+  * `userId` - id of user in local wiki database or 0 if new/anonymous
+  * `userNameRaw` - value as given by the environment
+  * `userNameFiltered` - after running `Auth_remoteuser_filterUserName` hook
+  * `userNameCanonicalized` - representation in the local wiki database
+  Take the following as an example in which a shellscript is getting executed
+  only when a user is created and not on every page reload:
 
         $wgAuth_remoteuser_ForceUserProps = false;
         $wgAuth_remoteuser_UserProps = array(
-            'email' => function( $name ) {
+            'email' => function( $data ) {
+		$name = $data[ 'userNameRaw' ];
                 return shell_exec( "/usr/bin/get_mail.sh '$name'" );
             }
         )
@@ -167,41 +171,30 @@ have to set explicitly are marked with the `// default` comment.
         $wgAuthRemoteuserForceUserProps = false;
 
 
-Migrating from versions prior 2.0.0
------------------------------------
+Upgrade
+-------
 
 This extension doesn't uses any database entries, therefore you don't need
 that extension to be enabled while upgrading. Just disable it and after
-you have upgraded your wiki, reenable this extension by a rewrite of the
-extension specific configuration in your `LocalSettings.php`.
+you have upgraded your wiki, reenable this extension.
 
-In older versions of Auth_remoteuser an example configuration may have
-looked like the following:
 
-    require_once "$IP/extensions/Auth_remoteuser/Auth_remoteuser.php";
-    $wgAuth = new Auth_remoteuser();
-    $wgAuthRemoteuserAuthz = true;
-    $wgAuthRemoteuserDomain = 'NETBIOSDOMAIN';
-    $wgAuthRemoteuserName = $_SERVER[ 'AUTHENTICATE_DISPLAYNAME' ];
-    $wgAuthRemoteuserMailDomain = 'example.com';
-    $wgAuthRemoteuserNotify = false;
+Upgrading from versions prior 2.0.0
+-----------------------------------
 
-To achieve the same behaviour that configuration has to be rewritten to
-this:
+All legacy configuration parameters are still fully supported. You don't
+have to rewrite your old `LocalSettings.php` settings for this extension.
+But to assist you in transitioning of old configuration parameters to new
+ones, the following list can guide you:
 
-    wfLoadExtension( 'Auth_remoteuser' );
-    $wgAuthRemoteuserFacetUserName = array(
-        '/@NETBIOSDOMAIN$/' => '',
-        '/^NETBIOSDOMAIN\\\\/' => ''
-    );
-    $wgAuthRemoteuserUserProps = array(
-        'realname' => $_SERVER[ 'AUTHENTICATE_DISPLAYNAME' ],
-        'email' => $_SERVER['REMOTE_USER'] . '@example.com',
-        'enotifminoredits' => 0,
-        'enotifrevealaddr' => 0,
-        'enotifusertalkpages' => 0,
-        'enotifwatchlistpages' => 0
-    );
+* `$wgAuthRemoteuserAuthz`
+  This parameter has no equivalent new parameter, because you can achive
+  the same with not loading the extension at all.
+* `$wgAuthRemoteuserName` - Superseded by `$wgRemoteuserUserProps`.
+* `$wgAuthRemoteuserMail` - Superseded by `$wgRemoteuserUserProps`.
+* `$wgAuthRemoteuserNotify` - Superseded by `$wgRemoteuserUserProps`.
+* `$wgAuthRemoteuserDomain` - Superseded by `$wgRemoteuserFacetUserName`.
+* `$wgAuthRemoteuserMailDomain` - Superseded by `$wgRemoteuserUserProps`.
 
 
 Additional notes
