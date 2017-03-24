@@ -416,12 +416,12 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 			# @see $wgGroupPermissions['user']['editmyoptions']
 			if ( $this->forceUserProps ) {
 
+				$container [ 'saveToDB' ] = true;
 				self::setUserProps(
 					$container,
 					$info->getUserInfo()->getUser(),
 					true
 				);
-				$info->getUserInfo()->getUser()->saveSettings();
 
 				# Do not hide forced preferences completely by using the global
 				# `$wgHiddenPrefs`, because we still want them to be shown to the user.
@@ -566,6 +566,10 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 
 			# Create a copy of our provider metadata.
 			$metadata = ( isset( $container[ 'metadata' ] ) ) ? [] + $container[ 'metadata' ] : [];
+			# Provide a switch to save changes to the database with this funtion call.
+			$saveToDB = ( isset( $container[ 'saveToDB' ] ) ) ? $container[ 'saveToDB' ] : false;
+			# Mark changes to prevent superfluous database writings.
+			$dirty = false;
 
 			foreach ( $container[ 'properties' ] as $option => $value ) {
 
@@ -582,19 +586,29 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 
 				switch ( $option ) {
 					case 'realname':
-						if ( is_string( $value ) ) {
+						if ( is_string( $value ) && $value !== $user->getRealName() ) {
+							$dirty = true;
 							$user->setRealName( $value );
 						}
 						break;
 					case 'email':
-						if ( Sanitizer::validateEmail( $value ) ) {
+						if ( Sanitizer::validateEmail( $value ) && $value !== $user->getEmail() ) {
+							$dirty = true;
 							$user->setEmail( $value );
 							$user->confirmEmail();
 						}
 						break;
 					default:
-						$user->setOption( $option, $value );
+						if ( $value != $user->getOption( $option ) ) {
+							$dirty = true;
+							$user->setOption( $option, $value );
+						}
 				}
+			}
+
+			# Only update database if something has changed.
+			if ( $saveToDB && $dirty ) {
+				$user->saveSettings();
 			}
 		}
 
