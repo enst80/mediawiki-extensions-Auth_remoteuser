@@ -383,26 +383,35 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 	 * The SessionManager selected us as the SessionProvider for this request.
 	 *
 	 * Now we can add additional information to the requests user object and
-	 * remove some special pages and personal urls from the clients wiki.
+	 * remove some special pages and personal urls from the clients frontend.
 	 *
 	 * @since 2.0.0
 	 */
 	public function refreshSessionInfo( SessionInfo $info, WebRequest $request, &$metadata ) {
 
-		# If the user identified by the environment variable is the same as the
-		# the one used for this session, then add additional information to the
-		# user object. They can only differ if our property `switchUser` is true.
-		if ( $this->userProps && $info->getUserInfo()->getId() === $metadata[ 'userId' ] ) {
+		$disableSpecialPages = [];
+
+		# This can only be true, if our `switchUser` member is set to true and the
+		# user identified by us uses another local wiki user for this session.
+		$switchedUser = ( $info->getUserInfo()->getId() !== $metadata[ 'userId' ] ) ? true : false;
+
+		# Disable password related special pages and hide preference option.
+		if ( ! $switchedUser ) {
+			$disableSpecialPages += [ 'ChangePassword', 'PasswordReset' ];
+			global $wgHiddenPrefs;
+			$wgHiddenPrefs[] = 'password';
+		}
+
+		# Set user preference default values.
+		if ( ! $switchedUser && $this->userProps ) {
 
 			$container = [
 				'properties' => $this->userProps,
 				'metadata' => $metadata
 			];
 
-			# Force the setting of our user properties on each request virtually
-			# overwrites the users own preference settings. Useful if users real name
-			# or email is provided by an external source and must not be changed by
-			# the user in MediaWiki itself.
+			# Forcing user preferences is useful if users real name or email is provided
+			# by an external source and must not be changed by the user himself.
 			#
 			# @see $wgGroupPermissions['user']['editmyoptions']
 			if ( $this->forceUserProps ) {
@@ -413,6 +422,42 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 					true
 				);
 				$info->getUserInfo()->getUser()->saveSettings();
+
+				# Do not hide forced preferences completely by using the global
+				# `$wgHiddenPrefs`, because we still want them to be shown to the user.
+				# Therefore use the according hook to disable their editing capabilities.
+				$properties = array_keys( $this->userProps );
+				Hooks::register(
+					'GetPreferences',
+					function( $user, &$prefs ) use ( $properties ) {
+						foreach( $properties as $property ) {
+
+							if ( $property === 'email' ) {
+								$property = 'emailaddress';
+							}
+
+							if ( ! isset( $prefs[ $property ] ) ) {
+								continue;
+							}
+
+							# Email preference needs special treatment, because it will display a
+							# link to change the address. We have to replace that with the address
+							# only.
+							if ( $property === 'emailaddress' ) {
+								$prefs[ $property ][ 'default' ] = $user->getEmail() ?
+									htmlspecialchars( $user->getEmail() ) : '';
+							}
+
+							$prefs[ $property ][ 'disabled' ] = 'disabled';
+
+						}
+					}
+				);
+
+				# Disable special pages related to email preferences.
+				if ( array_key_exists( 'email', $this->userProps ) ) {
+					$disableSpecialPages += [ 'ChangeEmail', 'Confirmemail', 'Invalidateemail' ];
+				}
 
 			# Only add additional information to the user object if the user must be
 			# created in the local database with this request.
@@ -429,40 +474,49 @@ class EnvVarSessionProvider extends CookieSessionProvider {
 
 		}
 
-		if ( $this->removeAuthPagesAndLinks ) {
+		# Disable any special pages related to user authentication.
+		if ( ! $this->switchUser ) {
+			$disableSpecialPages += [
+				'Userlogin',
+				'Userlogout',
+				'CreateAccount',
+				'LinkAccounts',
+				'UnlinkAccounts',
+				'ChangeCredentials',
+				'RemoveCredentials'
+			];
+		}
 
-			# Let us remove the `logout` link in any case (independent of our
-			# `switchUser` setting), because using an anonymous user is something we
-			# want to avert while using this extension.
-			Hooks::register( 'PersonalUrls', [
-				function ( &$personalurls, &$title ) {
-					unset( $personalurls[ 'logout' ] );
+		# Don't remove anything (besides `CreateAccount` maybe).
+		# Be aware of the following security vulnerability. If someone created an
+		# account with the same name as a new and authenticated user has, then this
+		# new user will have full access to that account, because we will authorize
+		# him by his name only (without password verification).
+		if ( ! $this->removeAuthPagesAndLinks ) {
+			$disableSpecialPages = [];
+		}
+
+		Hooks::register(
+			'SpecialPage_initList', [
+				function ( &$specials ) use ( $disableSpecialPages ) {
+					foreach ( $disableSpecialPages as $page ) {
+						unset( $specials[ $page ] );
+					}
 					return true;
 				}
-				]
-			);
+			]
+		);
 
-			if ( !$this->switchUser ) {
-				Hooks::register( 'SpecialPage_initList', [
-					function ( &$specials ) {
-						foreach ( [
-							'Userlogin',
-							'Userlogout',
-							'CreateAccount',
-							'LinkAccounts',
-							'UnlinkAccounts',
-							'ChangeCredentials',
-							'RemoveCredentials'
-						] as $page ) {
-							unset( $specials[ $page ] );
-						}
-						return true;
-					}
-					]
-				);
+		# Let us remove the `logout` link in any case (independent of our
+		# `switchUser` setting), because using an anonymous user is something we
+		# want to avert while using this extension.
+		Hooks::register( 'PersonalUrls', [
+			function ( &$personalurls, &$title ) {
+				unset( $personalurls[ 'logout' ] );
+				return true;
 			}
-
-		}
+			]
+		);
 
 		return true;
 	}
