@@ -50,7 +50,7 @@ have to set explicitly are marked with the `// default` comment.
         $wgAuthRemoteuserUserNames[] = $_SERVER[ 'REDIRECT_REMOTE_USER' ];
         $wgAuthRemoteuserUserNames[] = $_SERVER[ 'LOGON_USER' ];
 
-	$wgAuthRemoteUserNames = function() {
+        $wgAuthRemoteUserNames = function() {
             $credentials = explode( ':', $_SERVER[ 'HTTP_AUTHORIZATION' ] );
             $username = $credentials[0];
             $password = $credentials[1];
