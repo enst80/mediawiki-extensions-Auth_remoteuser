@@ -40,7 +40,7 @@ use Closure;
 /**
  * Session provider for the Auth_remoteuser extension.
  *
- * An EnvVarSessionProvider uses an environment variable set by the webserver
+ * A RemoteUserSessionProvider uses an environment variable set by the webserver
  * specifying the user (identifying the user is the purpose of the webservers
  * authentication system) and tries to tie it to an according local wiki user.
  *
@@ -61,7 +61,7 @@ use Closure;
  * @version 2.0.0
  * @since 2.0.0
  */
-class EnvVarSessionProvider extends CookieSessionProvider {
+class RemoteUserSessionProvider extends CookieSessionProvider {
 
 	/**
 	 * The environment variable name(s) given as an array.

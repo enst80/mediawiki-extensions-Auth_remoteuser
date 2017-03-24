@@ -1,14 +1,15 @@
 Auth_remoteuser
 ===============
 
-Auth_remoteuser is an extension for MediaWiki 1.27 and up which logs in users
-into mediawiki automatically if they are already authenticated by the
-surrounding webserver environment. The extension expects the authenticated
-username in a given environment variable and tries to create a session for
-a mediawiki user with the same username. It is implemented as a
-SessionProvider in mediawikis AuthManager stack. If you need support for
-MediaWiki 1.26 or below, than get a version of Auth_remoteuser below the
-2.0.0 version.
+Auth_remoteuser is an extension for MediaWiki 1.27 and up which logs-in users
+into mediawiki automatically if they are already authenticated by a remote
+source. This can be anything ranging from webserver environment variables to
+request headers to arbitrary external sources if at least the remote user name
+maps to an existing user name in the local wiki database (or it can be created
+if the extension was instructed to do so).
+Because it is implemented as a SessionProvider in MediaWikis AuthManager stack,
+which was introduced with MediaWiki 1.27, you need a version of Auth_remoteuser
+below 2.0.0 to use this extension in MediaWiki 1.26 and below.
 
 
 Requirements
