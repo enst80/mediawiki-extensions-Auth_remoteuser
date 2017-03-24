@@ -6,7 +6,7 @@
 	},
 	"config": {
 		"_prefix": "wgAuthRemoteuser",
-		"EnvVarName": "REMOTE_USER",
+		"UserNames": null,
 		"Priority": 50,
 		"AllowUserSwitch": false,
 		"RemoveAuthPagesAndLinks": true,

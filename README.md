@@ -6,7 +6,8 @@ into mediawiki automatically if they are already authenticated by a remote
 source. This can be anything ranging from webserver environment variables to
 request headers to arbitrary external sources if at least the remote user name
 maps to an existing user name in the local wiki database (or it can be created
-if the extension was instructed to do so).
+if the extension was instructed to do so). The external source takes total
+responsibility in authenticating an authorized user.
 Because it is implemented as a SessionProvider in MediaWikis AuthManager stack,
 which was introduced with MediaWiki 1.27, you need a version of Auth_remoteuser
 below 2.0.0 to use this extension in MediaWiki 1.26 and below.
@@ -36,14 +37,26 @@ set of global configuration variables all starting with `$wgAuthRemoteuser`.
 Just add them to your `LocalSettings.php`. Default values, which you don't
 have to set explicitly are marked with the `// default` comment.
 
-* Set the name(s) of the environment variable(s) to use. This can either be
-  a simple string or an array of strings. Examples:
+* Set the name(s) to use for mapping into the local wiki user database. This
+  can either be a simple string, a closure or an array of strings and/or
+  closures. If the value is `null`, the extensions defaults to using the
+  environment variable `REMOTE_USER`. The first name in the given list, which
+  matches an user name in the local wiki database will be taken for login.
+  Examples:
 
-        $wgAuthRemoteuserEnvVarName = 'REMOTE_USER'; // default
+        $wgAuthRemoteuserUserNames = null; // default
 
-        $wgAuthRemoteuserEnvVarName = [ 'REMOTE_USER', 'REDIRECT_REMOTE_USER' ];
+        $wgAuthRemoteuserUserNames = $_SERVER[ 'REMOTE_USER' ];
+        $wgAuthRemoteuserUserNames[] = $_SERVER[ 'REDIRECT_REMOTE_USER' ];
+        $wgAuthRemoteuserUserNames[] = $_SERVER[ 'LOGON_USER' ];
 
-        $wgAuthRemoteuserEnvVarName = 'LOGON_USER';
+	$wgAuthRemoteUserNames = function() {
+            $credentials = explode( ':', $_SERVER[ 'HTTP_AUTHORIZATION' ] );
+            $username = $credentials[0];
+            $password = $credentials[1];
+            return MyOwnAuthorizer::authenticate( $username, $password )
+                ? $username : null;
+        };
 
 * If you are using other SessionProvider extensions besides this one, you
   have to specify their significance by using an ascending priority:
@@ -64,9 +77,9 @@ have to set explicitly are marked with the `// default` comment.
   a Kerberos principal from the end or replacing some invalid characters, set
   an array of replacement patterns to the following configuration variable:
 
-        $wgAuthRemoteuserFacetUserName = array(); // default
+        $wgAuthRemoteuserUserNameFilters = array(); // default
 
-        $wgAuthRemoteuserFacetUserName = array(
+        $wgAuthRemoteuserUserNameFilters = array(
             '/_/' => ' ',                    // replace underscores with spaces
             '/@domain.example.com$/' => '',  // strip Kerberos principal from back
             '/^domain\\\\/' => '',           // strip NTLM domain from front
@@ -147,9 +160,10 @@ have to set explicitly are marked with the `// default` comment.
   inside your `LocalSettings.php`. The first parameter given to the function
   is an associative array with the following keys:
   * `userId` - id of user in local wiki database or 0 if new/anonymous
-  * `userNameRaw` - value as given by the environment
-  * `userNameFiltered` - after running `Auth_remoteuser_filterUserName` hook
-  * `userNameCanonicalized` - representation in the local wiki database
+  * `remoteUserName` - value as given by the environment
+  * `filteredUserName` - after running `Auth_remoteuser_filterUserName` hook
+  * `canonicalUserName` - representation in the local wiki database
+  * `canonicalUserNameUsed` - the user (name) used for the current session
 
   Take the following as an example in which a shellscript is getting executed
   only when a user is created and not on every page reload:
@@ -157,7 +171,7 @@ have to set explicitly are marked with the `// default` comment.
         $wgAuth_remoteuser_ForceUserProps = false;
         $wgAuth_remoteuser_UserProps = array(
             'email' => function( $data ) {
-                $name = $data[ 'userNameRaw' ];
+                $name = $data[ 'remoteUserName' ];
                 return shell_exec( "/usr/bin/get_mail.sh '$name'" );
             }
         )
@@ -195,7 +209,7 @@ ones, the following list can guide you:
 * `$wgAuthRemoteuserName` - Superseded by `$wgRemoteuserUserProps`.
 * `$wgAuthRemoteuserMail` - Superseded by `$wgRemoteuserUserProps`.
 * `$wgAuthRemoteuserNotify` - Superseded by `$wgRemoteuserUserProps`.
-* `$wgAuthRemoteuserDomain` - Superseded by `$wgRemoteuserFacetUserName`.
+* `$wgAuthRemoteuserDomain` - Superseded by `$wgRemoteuserUserNameFilters`.
 * `$wgAuthRemoteuserMailDomain` - Superseded by `$wgRemoteuserUserProps`.
 
 

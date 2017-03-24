@@ -40,23 +40,23 @@ use Closure;
 /**
  * Session provider for the Auth_remoteuser extension.
  *
- * A RemoteUserSessionProvider uses an environment variable set by the webserver
- * specifying the user (identifying the user is the purpose of the webservers
- * authentication system) and tries to tie it to an according local wiki user.
+ * A RemoteUserSessionProvider uses a given user name (given by an arbitrary
+ * source, which takes total responsibility in authenticating that user) and
+ * tries to tie it to an according local wiki user.
  *
  * This provider acts the same as the CookieSessionProvider but in contrast
  * does not allow anonymous users per session as the CookieSessionProvider
  * does. In this case a user will be set which is identified by the given
- * environment variable. Additionally this provider will create a new session
- * with the given user if no session exists for the current request. The
- * default CookieSessionProvider creates new sessions on specific user
- * activities only (@see CookieSessionProvider on lines 180-182).
+ * user name. Additionally this provider will create a new session with the
+ * given user if no session exists for the current request. The default
+ * `CookieSessionProvider` creates new sessions on specific user activities
+ * only (@see `CookieSessionProvider` on lines 180-182).
  *
- * In fact, this provider just supplements the default CookieSessionProvider,
+ * In fact, this provider acts the same as the default `CookieSessionProvider`,
  * so set the priorities in your MediaWiki accordingly. Give this provider a
  * higher priority than CookieSessionProvider to get an automatic login and the
- * default CookieSessionProvider as a fallback, when no environment variable is
- * set.
+ * default CookieSessionProvider as a fallback, when no remote user name is
+ * given.
  *
  * @version 2.0.0
  * @since 2.0.0
@@ -64,12 +64,12 @@ use Closure;
 class RemoteUserSessionProvider extends CookieSessionProvider {
 
 	/**
-	 * The environment variable name(s) given as an array.
+	 * The remote user name(s) given as an array.
 	 *
 	 * @var string[]
 	 * @since 2.0.0
 	 */
-	protected $envVarName;
+	protected $remoteUserNames;
 
 	/**
 	 * Indicates if the automatically logged-in user can switch to another local
@@ -123,17 +123,17 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 	 * * `$wgAuthRemoteuserName`       superseded by `$wgRemoteuserUserProps`
 	 * * `$wgAuthRemoteuserMail`       superseded by `$wgRemoteuserUserProps`
 	 * * `$wgAuthRemoteuserNotify`     superseded by `$wgRemoteuserUserProps`
-	 * * `$wgAuthRemoteuserDomain`     superseded by `$wgRemoteuserFacetUserName`
+	 * * `$wgAuthRemoteuserDomain`     superseded by `$wgRemoteuserUserNameFilters`
 	 * * `$wgAuthRemoteuserMailDomain` superseded by `$wgRemoteuserUserProps`
 	 *
-	 * @see $wgAuthRemoteuserEnvVarName
-	 * @see $wgAuthRemoteuserPriority
-	 * @see $wgAuthRemoteuserAllowUserSwitch
-	 * @see $wgAuthRemoteuserRemoveAuthPagesAndLinks
-	 * @see $wgAuthRemoteuserAutoCreateUser
-	 * @see $wgAuthRemoteuserFacetUserName
+	 * @see $wgAuthRemoteuserUserNames
+	 * @see $wgAuthRemoteuserUserNameFilters
 	 * @see $wgAuthRemoteuserUserProps
 	 * @see $wgAuthRemoteuserForceUserProps
+	 * @see $wgAuthRemoteuserAutoCreateUser
+	 * @see $wgAuthRemoteuserAllowUserSwitch
+	 * @see $wgAuthRemoteuserRemoveAuthPagesAndLinks
+	 * @see $wgAuthRemoteuserPriority
 	 * @since 2.0.0
 	 */
 	public function __construct( $params = [] ) {
@@ -160,19 +160,24 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 
 		parent::__construct( $params );
 
-		# The EnvVarName configuration value could be a string or an array of
-		# strings, but we want an array in any case.
-		$this->envVarName = [];
-		if ( $conf->has( 'EnvVarName' ) ) {
-			$names = $conf->get( 'EnvVarName' );
-			if ( is_string( $names ) ) {
-				$this->envVarName = [ $names ];
-			} elseif ( is_array( $names ) ) {
-				foreach ( $names as $name ) {
-					if ( is_string( $name ) ) {
-						$this->envVarName[] = $name;
-					}
-				}
+		$this->remoteUserNames = [];
+
+		# The `UserNames` configuration value can be a string, a closure or an array
+		# of strings and/or closures. We want it as an array in any case.
+		$names = null;
+		if ( $conf->has( 'UserNames' ) ) {
+			$names = $conf->get( 'UserNames' );
+		}
+		# This will be our default remote user name source, if no other user name is
+		# given (the configuration value is still `null`).
+		if ( null === $names ) {
+			$names = [ getenv( 'REMOTE_USER' ) ];
+		} elseif ( ! is_array( $names ) ) {
+			$names = [ $names ];
+		}
+		foreach( $names as $name ) {
+			if ( is_string( $name ) || $name instanceof Closure ) {
+				$this->remoteUserNames[] = $name;
 			}
 		}
 
@@ -182,13 +187,13 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 
 		$this->autoCreateUser = ( $conf->has( 'AutoCreateUser' ) ) ? (bool)$conf->get( 'AutoCreateUser' ) : true;
 
-		# The environment variable should be processed before used as an identifier
-		# into the local user database, so set up an according callback to be used
-		# when the `Auth_remoteuser_filterUserName` hook runs.
+		# The remote user name should be processed before used as an identifier into
+		# the local user database, so set up an according callback to be used when
+		# the `Auth_remoteuser_filterUserName` hook runs.
 		#
-		# @see self::facetUserName()
-		if ( $conf->has( 'FacetUserName' ) ) {
-			self::facetUserName( $conf->get( 'FacetUserName' ) );
+		# @see self::setUserNameFilters()
+		if ( $conf->has( 'UserNameFilters' ) ) {
+			self::setUserNameFilters( $conf->get( 'UserNameFilters' ) );
 		}
 
 		$this->userProps = ( $conf->has( 'UserProps' ) && is_array( $conf->get( 'UserProps' ) ) ) ? $conf->get( 'UserProps' ) : null;
@@ -201,7 +206,7 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 		#
 		# @deprecated 2.0.0
 		if ( $conf->has( 'Authz' ) && ! $conf->get( 'Authz' ) ) {
-			$this->envVarName = [];
+			$this->remoteUserNames = [];
 		}
 
 		# Evaluation of legacy parameter `$wgAuthRemoteuserName`.
@@ -233,11 +238,11 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 
 		# Evaluation of legacy parameter `$wgAuthRemoteuserDomain`.
 		#
-		# Ignored when the new equivalent `$wgAuthRemoteuserFacetUserName` is set.
+		# Ignored when the new equivalent `$wgAuthRemoteuserUserNameFilters` is set.
 		#
 		# @deprecated 2.0.0
-		if ( $conf->has( 'Domain' ) && is_string( $conf->get( 'Domain' ) ) && $conf->get( 'Domain' ) !== '' && ! $conf->has( 'FacetUserName' ) ) {
-			self::facetUserName( [
+		if ( $conf->has( 'Domain' ) && is_string( $conf->get( 'Domain' ) ) && $conf->get( 'Domain' ) !== '' && ! $conf->has( 'UserNameFilters' ) ) {
+			self::setUserNameFilters( [
 				'/@' . $conf->get( 'Domain' ) . '$/' => '',
 				'/^' . $conf->get( 'Domain' ) . '\\\\/' => ''
 				]
@@ -255,7 +260,7 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 			$domain = $conf->get( 'MailDomain' );
 			$this->userProps += [
 				'email' => function( $metadata ) use( $domain )  {
-					return $metadata[ 'userNameRaw' ] . '@' . $domain;
+					return $metadata[ 'remoteUserName' ] . '@' . $domain;
 				}
 			];
 		}
@@ -270,93 +275,90 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 	 */
 	public function provideSessionInfo( WebRequest $request ) {
 
-		foreach ( $this->envVarName as $envVarName ) {
+		foreach ( $this->remoteUserNames as $remoteUserName ) {
 
-			# Get the environment variable value. Will return false if it doesn't
-			# exist.
-			$userName = getenv( $envVarName );
-
-			if ( $userName !== false ) {
-
-				# Process the given environment variable if needed, e.g. strip NTLM
-				# domain, replace characters, rewrite to another username or even
-				# blacklist. This can be used by the wiki administrator to adjust this
-				# SessionProvider to his specific needs.
-				if ( !Hooks::run( 'Auth_remoteuser_filterUserName', [ &$userName ] ) ) {
-					continue;
-				}
-
-				# Create a UserInfo (and User) object by given user name. The factory
-				# method will take care of correct validation of user names. It will also
-				# transform the first letter to uppercase.
-				#
-				# An exception gets thrown when the given user name is not 'usable' as an
-				# user name for the wiki, either blacklisted or contains invalid characters
-				# or is an ip address.
-				#
-				# @see User::getCanonicalName()
-				# @see User::isUsableName()
-				# @see Title::newFromText()
-				try {
-					$userInfo = UserInfo::newFromName( $userName, true );
-				} catch ( InvalidArgumentException $e ) {
-					continue;
-				}
-
-				# We aren't allowed to autocreate new users, therefore we won't provide any
-				# session infos.
-				#
-				# @see User::isAnon()
-				# @see User::isLoggedIn()
-				# @see UserInfo::getId()
-				if ( !( $this->autoCreateUser || $userInfo->getId() ) ) {
-					continue;
-				}
-
-				# Let our parent class find a valid SessionInfo.
-				$sessionInfo = parent::provideSessionInfo( $request );
-
-				# Our parent class couldn't provide any info. This means we can create a
-				# new session with our identified user.
-				if ( !$sessionInfo ) {
-					$sessionInfo = new SessionInfo( $this->priority, [
-						"provider" => $this,
-						"id" => $this->manager->generateSessionId(),
-						"userInfo" => $userInfo
-						]
-					);
-				}
-
-				# The current session identifies an anonymous user, therefore we have to
-				# use the forceUse flag to set our identified user. If we are configured
-				# to forbid user switching, force the usage of our identified user too.
-				if ( !$sessionInfo->getUserInfo() || !$sessionInfo->getUserInfo()->getId()
-					|| ( !$this->switchUser && $sessionInfo->getUserInfo()->getId() !== $userInfo->getId() ) ) {
-					$sessionInfo = new SessionInfo( $sessionInfo->getPriority(), [
-						"copyFrom" => $sessionInfo,
-						"userInfo" => $userInfo,
-						"forceUse" => true
-						]
-					);
-				}
-
-				# Store info about user identified by environment variable in the provider
-				# metadata.
-				$sessionInfo = new SessionInfo( $sessionInfo->getPriority(), [
-					"copyFrom" => $sessionInfo,
-					"metadata" => [
-						"userId" => $userInfo->getId(),
-						"userNameRaw" => getenv( $envVarName ),
-						"userNameFiltered" => $userName,
-						"userNameCanonicalized" => $sessionInfo->getUserInfo()->getName()
-						]
-					]
-				);
-
-				return $sessionInfo;
-
+			if ( $remoteUserName instanceof Closure ) {
+				$remoteUserName = call_user_func( $remoteUserName );
 			}
 
+			$filteredUserName = $remoteUserName;
+
+			# Process each given remote user name if needed, e.g. strip NTLM domain,
+			# replace characters, rewrite to another username or even blacklist it by
+			# returning false. This can be used by the wiki administrator to adjust
+			# this SessionProvider to his specific needs.
+			if ( !Hooks::run( 'Auth_remoteuser_filterUserName', [ &$filteredUserName ] ) ) {
+				continue;
+			}
+
+			# Create a UserInfo (and User) object by given user name. The factory
+			# method will take care of correct validation of user names. It will also
+			# canonicalize it (e.g. transform the first letter to uppercase).
+			#
+			# An exception gets thrown when the given user name is not 'usable' as an
+			# user name for the wiki, either blacklisted or contains invalid characters
+			# or is an ip address.
+			#
+			# @see User::getCanonicalName()
+			# @see User::isUsableName()
+			# @see Title::newFromText()
+			try {
+				$userInfo = UserInfo::newFromName( $filteredUserName, true );
+			} catch ( InvalidArgumentException $e ) {
+				continue;
+			}
+
+			# We aren't allowed to autocreate new users, therefore we won't provide any
+			# session infos.
+			#
+			# @see User::isAnon()
+			# @see User::isLoggedIn()
+			# @see UserInfo::getId()
+			if ( !( $this->autoCreateUser || $userInfo->getId() ) ) {
+				continue;
+			}
+
+			# Let our parent class find a valid SessionInfo.
+			$sessionInfo = parent::provideSessionInfo( $request );
+
+			# Our parent class couldn't provide any info. This means we can create a
+			# new session with our identified user.
+			if ( !$sessionInfo ) {
+				$sessionInfo = new SessionInfo( $this->priority, [
+					"provider" => $this,
+					"id" => $this->manager->generateSessionId(),
+					"userInfo" => $userInfo
+					]
+				);
+			}
+
+			# The current session identifies an anonymous user, therefore we have to
+			# use the forceUse flag to set our identified user. If we are configured
+			# to forbid user switching, force the usage of our identified user too.
+			if ( !$sessionInfo->getUserInfo() || !$sessionInfo->getUserInfo()->getId()
+				|| ( !$this->switchUser && $sessionInfo->getUserInfo()->getId() !== $userInfo->getId() ) ) {
+				$sessionInfo = new SessionInfo( $sessionInfo->getPriority(), [
+					"copyFrom" => $sessionInfo,
+					"userInfo" => $userInfo,
+					"forceUse" => true
+					]
+				);
+			}
+
+			# Store info about user in the provider metadata.
+			$sessionInfo = new SessionInfo( $sessionInfo->getPriority(), [
+				"copyFrom" => $sessionInfo,
+				"metadata" => [
+					"userId" => $userInfo->getId(),
+					"remoteUserName" => $remoteUserName,
+					"filteredUserName" => $filteredUserName,
+					"canonicalUserName" => $userInfo->getName(),
+					"canonicalUserNameUsed" => $sessionInfo->getUserInfo()->getName()
+					]
+				]
+			);
+
+			return $sessionInfo;
 		}
 
 		# We didn't identified anything, so let other SessionProviders do their work.
@@ -372,7 +374,13 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 	 * @since 2.0.0
 	 */
 	public function mergeMetadata( array $savedMetadata, array $providedMetadata ) {
-		$keys = [ 'userId', 'userNameRaw', 'userNameFiltered', 'userNameCanonicalized' ];
+		$keys = [
+			'userId',
+			'remoteUserName',
+			'filteredUserName',
+			'canonicalUserName',
+			'canonicalUserNameUsed'
+		];
 		foreach ( $keys as $key ) {
 			$savedMetadata[ $key ] = $providedMetadata[ $key ];
 		}
@@ -615,7 +623,7 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 	}
 
 	/**
-	 * Helper method to apply replacement patterns to the environment variable
+	 * Helper method to apply replacement patterns to a remote user name
 	 * before using it as an identifier into the local wiki user database.
 	 *
 	 * Method uses the `Auth_remoteuser_filterUserName` hook.
@@ -633,7 +641,7 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 	 * @see preg_replace()
 	 * @since 2.0.0
 	 */
-	public static function facetUserName( $params = [] ) {
+	public static function setUserNameFilters( $params = [] ) {
 
 		if ( !is_array( $params ) ) {
 			throw new UnexpectedValueException( __METHOD__ . ' expects an array as parameter.' );
