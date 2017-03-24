@@ -7,13 +7,13 @@
 	"config": {
 		"_prefix": "wgAuthRemoteuser",
 		"UserNames": null,
-		"Priority": 50,
+		"UserNameFilters": [],
+		"UserProps": [],
+		"ForceUserProps": true,
+		"AutoCreateUser": true,
 		"AllowUserSwitch": false,
 		"RemoveAuthPagesAndLinks": true,
-		"AutoCreateUser": true,
-		"FacetUserName": [],
-		"UserProps": [],
-		"ForceUserProps": true
+		"Priority": 50
 	},
 	"type": "other",
 	"author": [
