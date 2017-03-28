@@ -275,21 +275,33 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 	 */
 	public function provideSessionInfo( WebRequest $request ) {
 
+		# Loop through user names given by all remote sources. First hit, which
+		# matches a usable local user name, will be used for our SessionInfo then.
 		foreach ( $this->remoteUserNames as $remoteUserName ) {
 
 			if ( $remoteUserName instanceof Closure ) {
 				$remoteUserName = call_user_func( $remoteUserName );
 			}
 
-			$filteredUserName = $remoteUserName;
+			# Keep info about remote-to-local user name processing for logging and
+			# provider metadata store.
+			$metadata = [ 'remoteUserName' => $remoteUserName ];
 
 			# Process each given remote user name if needed, e.g. strip NTLM domain,
 			# replace characters, rewrite to another username or even blacklist it by
 			# returning false. This can be used by the wiki administrator to adjust
 			# this SessionProvider to his specific needs.
+			$filteredUserName = $remoteUserName;
 			if ( !Hooks::run( 'Auth_remoteuser_filterUserName', [ &$filteredUserName ] ) ) {
+				$metadata[ 'filteredUserName' ] = $filteredUserName;
+				$this->logger->info(
+					"Can't login remote user '{remoteUserName}' automatically. " .
+					"Blocked this user when filtering it to '{filteredUserName}'.",
+					$metadata
+				);
 				continue;
 			}
+			$metadata[ 'filteredUserName' ] = $filteredUserName;
 
 			# Create a UserInfo (and User) object by given user name. The factory
 			# method will take care of correct validation of user names. It will also
@@ -305,8 +317,17 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 			try {
 				$userInfo = UserInfo::newFromName( $filteredUserName, true );
 			} catch ( InvalidArgumentException $e ) {
+				$metadata[ 'exception' ] = $e;
+				$this->logger->warning(
+					"Can't login remote user '{remoteUserName}' automatically. " .
+					"Filtered name '{filteredUserName}' is not usable as an " .
+					"user name in MediaWiki.: {exception}",
+					$metadata
+				);
 				continue;
 			}
+			$metadata[ 'userId' ] = $userInfo->getId();
+			$metadata[ 'canonicalUserName' ] = $userInfo->getName();
 
 			# We aren't allowed to autocreate new users, therefore we won't provide any
 			# session infos.
@@ -315,6 +336,11 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 			# @see User::isLoggedIn()
 			# @see UserInfo::getId()
 			if ( !( $this->autoCreateUser || $userInfo->getId() ) ) {
+				$this->logger->info(
+					"Can't login remote user '{remoteUserName}' automatically. " .
+					"Creation of new users not allowed in current configuration.",
+					$metadata
+				);
 				continue;
 			}
 
@@ -325,9 +351,9 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 			# new session with our identified user.
 			if ( !$sessionInfo ) {
 				$sessionInfo = new SessionInfo( $this->priority, [
-					"provider" => $this,
-					"id" => $this->manager->generateSessionId(),
-					"userInfo" => $userInfo
+					'provider' => $this,
+					'id' => $this->manager->generateSessionId(),
+					'userInfo' => $userInfo
 					]
 				);
 			}
@@ -338,23 +364,18 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 			if ( !$sessionInfo->getUserInfo() || !$sessionInfo->getUserInfo()->getId()
 				|| ( !$this->switchUser && $sessionInfo->getUserInfo()->getId() !== $userInfo->getId() ) ) {
 				$sessionInfo = new SessionInfo( $sessionInfo->getPriority(), [
-					"copyFrom" => $sessionInfo,
-					"userInfo" => $userInfo,
-					"forceUse" => true
+					'copyFrom' => $sessionInfo,
+					'userInfo' => $userInfo,
+					'forceUse' => true
 					]
 				);
 			}
 
 			# Store info about user in the provider metadata.
+			$metadata[ 'canonicalUserNameUsed' ] = $sessionInfo->getUserInfo()->getName();
 			$sessionInfo = new SessionInfo( $sessionInfo->getPriority(), [
-				"copyFrom" => $sessionInfo,
-				"metadata" => [
-					"userId" => $userInfo->getId(),
-					"remoteUserName" => $remoteUserName,
-					"filteredUserName" => $filteredUserName,
-					"canonicalUserName" => $userInfo->getName(),
-					"canonicalUserNameUsed" => $sessionInfo->getUserInfo()->getName()
-					]
+				'copyFrom' => $sessionInfo,
+				'metadata' => $metadata
 				]
 			);
 
@@ -396,6 +417,12 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 	 * @since 2.0.0
 	 */
 	public function refreshSessionInfo( SessionInfo $info, WebRequest $request, &$metadata ) {
+
+		$this->logger->info( "Setting up auto login session for remote user name " .
+			"'{remoteUserName}' (mapped to MediaWiki user '{canonicalUserName}', " .
+			"currently active as MediaWiki user '{canonicalUserNameUsed}').",
+			$metadata
+		);
 
 		$disableSpecialPages = [];
 
