@@ -266,6 +266,38 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			# Let our parent class find a valid SessionInfo.
 			$sessionInfo = parent::provideSessionInfo( $request );
 
+			# Our parent class provided a session info, but the `$wgGroupPermission` for
+			# creating user accounts was changed while using this extension. This leds
+			# to a behaviour where a new user won't be created automatically even if the
+			# wiki administrator enabled (auto) account creation by setting the specific
+			# group permission `createaccount` or `autocreateaccount` to `true`.
+			#
+			# This happens in rare circurmstances only: The global permission forbids
+			# account creation. A new user requests the wiki and a specific session is
+			# getting created (by our parent). Then the `AuthManager` permits further
+			# account creation attempts due to global permission by marking this session
+			# as blacklistet. This blacklist info is stored inside the session itself.
+			# Now when the wiki admin changes the global account creation permission to
+			# `true` and the new user wants to access the wiki, then his account is not
+			# created automatically due to this blacklist marking inside his current
+			# session, identified by our parent class. Hence we throw this session away
+			# in these rare cases (We could manipulate the session itself and delete that
+			# `AuthManager::AutoCreateBlacklist` key instead, but that would look like
+			# real hacked code inside this method).
+			#
+			# @see AuthManager::AutoCreateBlacklist
+			# @see AuthManager::autoCreateUser()
+			if ( $sessionInfo && ! $userInfo->getId() ) {
+				$anon = $userInfo->getUser();
+				$permissions = $anon->getGroupPermissions( $anon->getEffectiveGroups() );
+				if ( in_array( 'autocreateaccount', $permissions, true ) ||
+					in_array( 'createaccount', $permissions, true ) ) {
+					$this->logger->warning("Renew session due to global permission change " .
+						"in (auto) creating new users.");
+					$sessionInfo = null;
+				}
+			}
+
 			# Our parent class couldn't provide any info. This means we can create a
 			# new session with our identified user.
 			if ( ! $sessionInfo ) {
