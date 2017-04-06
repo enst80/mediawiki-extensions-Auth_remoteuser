@@ -35,11 +35,12 @@
 	"license-name": "GPL-2.0+",
 	"SessionProviders": {
 		"Auth_remoteuser": {
-			"class": "MediaWiki\\Extensions\\Auth_remoteuser\\RemoteUserSessionProvider"
+			"class": "MediaWiki\\Extensions\\Auth_remoteuser\\AuthRemoteuserSessionProvider"
 		}
 	},
 	"AutoloadClasses": {
-		"MediaWiki\\Extensions\\Auth_remoteuser\\RemoteUserSessionProvider": "src/RemoteUserSessionProvider.php"
+		"MediaWiki\\Extensions\\Auth_remoteuser\\UserNameSessionProvider": "src/UserNameSessionProvider.php",
+		"MediaWiki\\Extensions\\Auth_remoteuser\\AuthRemoteuserSessionProvider": "src/AuthRemoteuserSessionProvider.php"
 	},
 	"manifest_version": 1
 }

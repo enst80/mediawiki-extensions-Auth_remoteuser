@@ -28,6 +28,16 @@ file `LocalSettings.php`:
 
     wfLoadExtension( 'Auth_remoteuser' );
 
+Take account of the global permissions for account creation. At least one of
+them must be `true` for anonymous users to led this extension create accounts
+for them (independent of its own configuration setting `AutoCreateUser` below):
+
+    $wgGroupPermission['*']['createaccount'] = true;
+
+    // or if account creation by anonymous users is forbidden
+    $wgGroupPermission['*']['createaccount'] = false;
+    $wgGroupPermission['*']['autocreateaccount'] = true;
+
 
 Configuration
 -------------
@@ -71,6 +81,11 @@ have to set explicitly are marked with the `// default` comment.
         $wgAuthRemoteuserAutoCreateUser = true; // default
 
         $wgAuthRemoteuserAutoCreateUser = false;
+
+  This setting is independent of the global permission for account creation
+  `$wgGroupPermission[]['autocreateaccount']`. Set this configuration to
+  `false` if you're using other session providers and all but this one can
+  create new users.
 
 * When you need to process your environment variable value before it can be
   used as an identifier into the wiki username list, for example to strip

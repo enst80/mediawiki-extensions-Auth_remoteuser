@@ -32,36 +32,30 @@ use MediaWiki\Session\SessionInfo;
 use MediaWiki\Session\UserInfo;
 use WebRequest;
 use Hooks;
-use GlobalVarConfig;
 use Sanitizer;
 use User;
 use Closure;
 
 /**
- * Session provider for the Auth_remoteuser extension.
+ * MediaWiki session provider for arbitrary user name sources.
  *
- * A RemoteUserSessionProvider uses a given user name (given by an arbitrary
- * source, which takes total responsibility in authenticating that user) and
- * tries to tie it to an according local wiki user.
+ * A `UserNameSessionProvider` uses a given user name (the remote source takes
+ * total responsibility in authenticating that user) and tries to tie it to an
+ * according local MediaWiki user.
  *
- * This provider acts the same as the CookieSessionProvider but in contrast
- * does not allow anonymous users per session as the CookieSessionProvider
+ * This provider acts the same as the `CookieSessionProvider` but in contrast
+ * does not allow anonymous users per session as the `CookieSessionProvider`
  * does. In this case a user will be set which is identified by the given
  * user name. Additionally this provider will create a new session with the
  * given user if no session exists for the current request. The default
  * `CookieSessionProvider` creates new sessions on specific user activities
- * only (@see `CookieSessionProvider` on lines 180-182).
+ * only.
  *
- * In fact, this provider acts the same as the default `CookieSessionProvider`,
- * so set the priorities in your MediaWiki accordingly. Give this provider a
- * higher priority than CookieSessionProvider to get an automatic login and the
- * default CookieSessionProvider as a fallback, when no remote user name is
- * given.
- *
+ * @see CookieSessionProvider::provideSessionInfo()
  * @version 2.0.0
  * @since 2.0.0
  */
-class RemoteUserSessionProvider extends CookieSessionProvider {
+class UserNameSessionProvider extends CookieSessionProvider {
 
 	/**
 	 * The remote user name(s) given as an array.
@@ -70,32 +64,6 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 	 * @since 2.0.0
 	 */
 	protected $remoteUserNames;
-
-	/**
-	 * Indicates if the automatically logged-in user can switch to another local
-	 * account while still beeing identified by the remote variable.
-	 *
-	 * @var boolean
-	 * @since 2.0.0
-	 */
-	protected $switchUser;
-
-	/**
-	 * Indicates if special pages related to authentication getting removed by us.
-	 *
-	 * @var boolean
-	 * @since 2.0.0
-	 */
-	protected $removeAuthPagesAndLinks;
-
-	/**
-	 * Indicates if local users (as of yet unknown to the wiki database) should be
-	 * created automatically.
-	 *
-	 * @var boolean
-	 * @since 2.0.0
-	 */
-	protected $autoCreateUser;
 
 	/**
 	 * Holds additional information and preference options about an user.
@@ -115,155 +83,106 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 	protected $forceUserProps;
 
 	/**
-	 * The constructor processes the extension configuration.
+	 * Indicates if local users (as of yet unknown to the MediaWiki database)
+	 * should be created automatically.
 	 *
-	 * Legacy extension parameters are still fully supported, but new parameters
-	 * are taking precedence over legacy ones. List of legacy parameters:
-	 * * `$wgAuthRemoteuserAuthz`      equivalent to disabling the extension
-	 * * `$wgAuthRemoteuserName`       superseded by `$wgRemoteuserUserProps`
-	 * * `$wgAuthRemoteuserMail`       superseded by `$wgRemoteuserUserProps`
-	 * * `$wgAuthRemoteuserNotify`     superseded by `$wgRemoteuserUserProps`
-	 * * `$wgAuthRemoteuserDomain`     superseded by `$wgRemoteuserUserNameFilters`
-	 * * `$wgAuthRemoteuserMailDomain` superseded by `$wgRemoteuserUserProps`
+	 * @var boolean
+	 * @since 2.0.0
+	 */
+	protected $autoCreateUser;
+
+	/**
+	 * Indicates if the automatically logged-in user can switch to another local
+	 * MediaWiki account while still beeing identified by the remote user name.
 	 *
-	 * @see $wgAuthRemoteuserUserNames
-	 * @see $wgAuthRemoteuserUserNameFilters
-	 * @see $wgAuthRemoteuserUserProps
-	 * @see $wgAuthRemoteuserForceUserProps
-	 * @see $wgAuthRemoteuserAutoCreateUser
-	 * @see $wgAuthRemoteuserAllowUserSwitch
-	 * @see $wgAuthRemoteuserRemoveAuthPagesAndLinks
-	 * @see $wgAuthRemoteuserPriority
+	 * @var boolean
+	 * @since 2.0.0
+	 */
+	protected $switchUser;
+
+	/**
+	 * Indicates if special pages related to authentication getting removed by us.
+	 *
+	 * @var boolean
+	 * @since 2.0.0
+	 */
+	protected $removeAuthPagesAndLinks;
+
+	/**
+	 * The constructor processes the class configuration.
+	 *
+	 * In addition to the keys of the parents constructor parameter `params` this
+	 * constructor evaluates the following keys:
+	 * * `remoteUserNames` - Either a string/closure or an array of
+	 *   strings/closures listing the given remote user name(s). Each closure
+	 *   should return a string.
+	 * * `userProps` - User preferences applied to the identified MediaWiki user
+	 *   given as an array of key value pairs. Each key relates to an according
+	 *   user preference option of the same name. Closures as values getting
+	 *   evaluated and should return the according value. The following keys are
+	 *   handled individually:
+	 *   * `realname` - Specifies the users real (display) name.
+	 *   * `emailaddress` - Specifies the users email address.
+	 * * `forceUserProps` - @see self::$forceUserProps
+	 * * `autoCreateUser` - @see self::$autoCreateUser
+	 * * `switchUser` - @see self::$switchUser
+	 * * `removeAuthPagesAndLinks` - @see self::$removeAuthPagesAndLinks
+	 *
 	 * @since 2.0.0
 	 */
 	public function __construct( $params = [] ) {
 
-		# Process our extension specific configuration, but don't overwrite our
-		# parents $this->config property, because doing so will clash with the
-		# SessionManager setting of that property due to a different prefix used.
-		$conf = new GlobalVarConfig( 'wgAuthRemoteuser' );
-
-		# Specify the priority we will give to SessionInfo objects. Validation will
-		# be done by our parents constructor.
-		if ( $conf->has( 'Priority' ) ) {
-			$params[ 'priority' ] = $conf->get( 'Priority' );
-		}
-
 		# The cookie prefix used by our parent will be the same as our class name to
 		# not interfere with cookies set by other instances of our parent.
-		$prefix = str_replace( '\\', '_', __CLASS__ );
+		$prefix = str_replace( '\\', '_', get_class( $this ) );
 		$params += [
-			"sessionName" => $prefix . '_session',
-			"cookieOptions" => []
+			'sessionName' => $prefix . '_session',
+			'cookieOptions' => []
 		];
 		$params[ 'cookieOptions' ] += [ "prefix" => $prefix ];
 
 		parent::__construct( $params );
 
-		$this->remoteUserNames = [];
+		# Setup configuration defaults.
+		$defaults = [
+			'remoteUserNames' => [],
+			'userProps' => null,
+			'forceUserProps' => false,
+			'autoCreateUser' => true,
+			'switchUser' => false,
+			'removeAuthPagesAndLinks' => true
+		];
 
-		# The `UserNames` configuration value can be a string, a closure or an array
-		# of strings and/or closures. We want it as an array in any case.
-		$names = null;
-		if ( $conf->has( 'UserNames' ) ) {
-			$names = $conf->get( 'UserNames' );
-		}
-		# This will be our default remote user name source, if no other user name is
-		# given (the configuration value is still `null`).
-		if ( null === $names ) {
-			$names = [ getenv( 'REMOTE_USER' ) ];
-		} elseif ( ! is_array( $names ) ) {
-			$names = [ $names ];
-		}
-		foreach( $names as $name ) {
-			if ( is_string( $name ) || $name instanceof Closure ) {
-				$this->remoteUserNames[] = $name;
-			}
-		}
-
-		$this->switchUser = ( $conf->has( 'AllowUserSwitch' ) ) ? (bool)$conf->get( 'AllowUserSwitch' ) : false;
-
-		$this->removeAuthPagesAndLinks = ( $conf->has( 'RemoveAuthPagesAndLinks' ) ) ? (bool)$conf->get( 'RemoveAuthPagesAndLinks' ) : true;
-
-		$this->autoCreateUser = ( $conf->has( 'AutoCreateUser' ) ) ? (bool)$conf->get( 'AutoCreateUser' ) : true;
-
-		# The remote user name should be processed before used as an identifier into
-		# the local user database, so set up an according callback to be used when
-		# the `Auth_remoteuser_filterUserName` hook runs.
-		#
-		# @see self::setUserNameFilters()
-		if ( $conf->has( 'UserNameFilters' ) ) {
-			self::setUserNameFilters( $conf->get( 'UserNameFilters' ) );
-		}
-
-		$this->userProps = ( $conf->has( 'UserProps' ) && is_array( $conf->get( 'UserProps' ) ) ) ? $conf->get( 'UserProps' ) : null;
-
-		$this->forceUserProps = ( $conf->has( 'ForceUserProps' ) ) ? (bool)$conf->get( 'ForceUserProps' ) : true;
-
-		# Evaluation of legacy parameter `$wgAuthRemoteuserAuthz`.
-		#
-		# Turning all off (no autologin) will be attained by evaluating nothing.
-		#
-		# @deprecated 2.0.0
-		if ( $conf->has( 'Authz' ) && ! $conf->get( 'Authz' ) ) {
-			$this->remoteUserNames = [];
-		}
-
-		# Evaluation of legacy parameter `$wgAuthRemoteuserName`.
-		#
-		# @deprecated 2.0.0
-		if ( $conf->has( 'Name' ) && is_string( $conf->get( 'Name' ) ) && $conf->get( 'Name' ) !== '' ) {
-			$this->userProps += [ 'realname' => $conf->get( 'Name' ) ];
-		}
-
-		# Evaluation of legacy parameter `$wgAuthRemoteuserMail`.
-		#
-		# @deprecated 2.0.0
-		if ( $conf->has( 'Mail' ) && is_string( $conf->get( 'Mail' ) ) && $conf->get( 'Mail' ) !== '' ) {
-			$this->userProps += [ 'email' => $conf->get( 'Mail' ) ];
-		}
-
-		# Evaluation of legacy parameter `$wgAuthRemoteuserNotify`.
-		#
-		# @deprecated 2.0.0
-		if ( $conf->has( 'Notify' ) ) {
-			$notify = $conf->get( 'Notify' ) ? 1 : 0;
-			$this->userProps += [
-				'enotifminoredits' => $notify,
-				'enotifrevealaddr' => $notify,
-				'enotifusertalkpages' => $notify,
-				'enotifwatchlistpages' => $notify
-			];
-		}
-
-		# Evaluation of legacy parameter `$wgAuthRemoteuserDomain`.
-		#
-		# Ignored when the new equivalent `$wgAuthRemoteuserUserNameFilters` is set.
-		#
-		# @deprecated 2.0.0
-		if ( $conf->has( 'Domain' ) && is_string( $conf->get( 'Domain' ) ) && $conf->get( 'Domain' ) !== '' && ! $conf->has( 'UserNameFilters' ) ) {
-			self::setUserNameFilters( [
-				'/@' . $conf->get( 'Domain' ) . '$/' => '',
-				'/^' . $conf->get( 'Domain' ) . '\\\\/' => ''
-				]
-			);
-		}
-
-		# Evaluation of legacy parameter `$wgAuthRemoteuserMailDomain`.
-		#
-		# Can't be used directly at this point of execution until we have our a valid
-		# user object with the according user name. Therefore we have to use the
-		# closure feature of our user property values to defer the evaluation.
-		#
-		# @deprecated 2.0.0
-		if ( $conf->has( 'MailDomain' ) && is_string ( $conf->get( 'MailDomain' ) ) && $conf->get( 'MailDomain' ) !== '' ) {
-			$domain = $conf->get( 'MailDomain' );
-			$this->userProps += [
-				'email' => function( $metadata ) use( $domain )  {
-					return $metadata[ 'remoteUserName' ] . '@' . $domain;
+		# Sanitize configuration and apply to own members.
+		foreach( $defaults as $key => $default) {
+			$value = $default;
+			if ( array_key_exists( $key, $params ) ) {
+				switch( $key ) {
+					case 'remoteUserNames':
+						$value = [];
+						$names = $params[ $key ];
+						if ( ! is_array( $names ) ) {
+							$names = [ $names ];
+						}
+						foreach( $names as $name ) {
+							if ( is_string( $name ) || $name instanceof Closure ) {
+								$value[] = $name;
+							}
+						}
+						break;
+					case 'userProps':
+						if ( is_array( $params[ $key ] ) ) {
+							$value = $params[ $key ];
+						}
+						break;
+					default:
+						$value = (bool)$params[ $key ];
+						break;
 				}
-			];
+			}
+			$this->{ $key } = $value;
 		}
+
 	}
 
 	/**
@@ -284,7 +203,7 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 			}
 
 			# Keep info about remote-to-local user name processing for logging and
-			# provider metadata store.
+			# provider metadata.
 			$metadata = [ 'remoteUserName' => $remoteUserName ];
 
 			# Process each given remote user name if needed, e.g. strip NTLM domain,
@@ -349,7 +268,7 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 
 			# Our parent class couldn't provide any info. This means we can create a
 			# new session with our identified user.
-			if ( !$sessionInfo ) {
+			if ( ! $sessionInfo ) {
 				$sessionInfo = new SessionInfo( $this->priority, [
 					'provider' => $this,
 					'id' => $this->manager->generateSessionId(),
