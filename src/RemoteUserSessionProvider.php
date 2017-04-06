@@ -294,7 +294,7 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 			$filteredUserName = $remoteUserName;
 			if ( !Hooks::run( 'Auth_remoteuser_filterUserName', [ &$filteredUserName ] ) ) {
 				$metadata[ 'filteredUserName' ] = $filteredUserName;
-				$this->logger->info(
+				$this->logger->warning(
 					"Can't login remote user '{remoteUserName}' automatically. " .
 					"Blocked this user when filtering it to '{filteredUserName}'.",
 					$metadata
@@ -336,7 +336,7 @@ class RemoteUserSessionProvider extends CookieSessionProvider {
 			# @see User::isLoggedIn()
 			# @see UserInfo::getId()
 			if ( !( $this->autoCreateUser || $userInfo->getId() ) ) {
-				$this->logger->info(
+				$this->logger->warning(
 					"Can't login remote user '{remoteUserName}' automatically. " .
 					"Creation of new users not allowed in current configuration.",
 					$metadata
