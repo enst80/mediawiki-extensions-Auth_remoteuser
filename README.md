@@ -6,8 +6,9 @@ into mediawiki automatically if they are already authenticated by a remote
 source. This can be anything ranging from webserver environment variables to
 request headers to arbitrary external sources if at least the remote user name
 maps to an existing user name in the local wiki database (or it can be created
-if the extension was instructed to do so). The external source takes total
+if the extension has the permissions to do so). The external source takes total
 responsibility in authenticating an authorized user.
+
 Because it is implemented as a SessionProvider in MediaWikis AuthManager stack,
 which was introduced with MediaWiki 1.27, you need a version of Auth_remoteuser
 below 2.0.0 to use this extension in MediaWiki 1.26 and below.
@@ -66,11 +67,11 @@ have to set explicitly are marked with the `// default` comment.
         $wgAuthRemoteuserUserName = []; // Will evaluate to nothing.
 
         // This is not adviced, because it will evaluate every visitor to
-        // the same user.
+        // the same wiki user.
         $wgAuthRemoteuserUserName = "Everybody";
 
         // Iterate through an array of given user name sources.
-        $wgAuthRemoteuserUserName = [ $_SERVER[ 'REMOTE_USER' ];
+        $wgAuthRemoteuserUserName = [ $_SERVER[ 'REMOTE_USER' ] ];
         $wgAuthRemoteuserUserName[] = $_SERVER[ 'REDIRECT_REMOTE_USER' ];
         $wgAuthRemoteuserUserName[] = $_SERVER[ 'LOGON_USER' ];
 
@@ -82,13 +83,6 @@ have to set explicitly are marked with the `// default` comment.
             return MyOwnAuthorizer::authenticate( $username, $password )
                 ? $username : null;
         };
-
-* If you are using other SessionProvider extensions besides this one, you
-  have to specify their significance by using an ascending priority:
-
-        $wgAuthRemoteuserPriority = 50; // default
-
-        $wgAuthRemoteuserPriority = SessionInfo::MAX_PRIORITY;
 
 * When you need to process your environment variable value before it can be
   used as an identifier into the wiki username list, for example to strip
@@ -119,25 +113,6 @@ have to set explicitly are marked with the `// default` comment.
                 return !(substr( $userName, 0, $length ) === $needle );
             }
         );
-
-* By default this extension mimics the behaviour of Auth_remoteuser
-  versions prior 2.0.0, which prohibits using another local user then the
-  one identified by the environment variable. You can change this behaviour
-  with the following configuration:
-
-        $wgAuthRemoteuserAllowUserSwitch = false; // default
-
-        $wgAuthRemoteuserAllowUserSwitch = true;
-
-* As an immutable SessionProvider (see `AllowUserSwitch` config above) all
-  special pages and login/logout links for authentication aren't needed
-  anymore by the identified user. If you still want them to be shown, for
-  example if you are using other session providers besides this one, then
-  set the following accordingly:
-
-        $wgAuthRemoteuserRemoveAuthPagesAndLinks = true; // default
-
-        $wgAuthRemoteuserRemoveAuthPagesAndLinks = false;
 
 * When you have further user information available in your environment, which
   can be tied to a created user, for example email address or real name, then
@@ -178,8 +153,8 @@ have to set explicitly are marked with the `// default` comment.
   Take the following as an example in which a shellscript is getting executed
   only when a user is created and not on every page reload:
 
-        $wgAuth_remoteuser_ForceUserProps = false;
-        $wgAuth_remoteuser_UserProps = array(
+        $wgAuthRemoteuserForceUserProps = false;
+        $wgAuthRemoteuserUserProps = array(
             'email' => function( $data ) {
                 $name = $data[ 'remoteUserName' ];
                 return shell_exec( "/usr/bin/get_mail.sh '$name'" );
@@ -195,6 +170,32 @@ have to set explicitly are marked with the `// default` comment.
         $wgAuthRemoteuserForceUserProps = true; // default
 
         $wgAuthRemoteuserForceUserProps = false;
+
+* By default this extension mimics the behaviour of Auth_remoteuser
+  versions prior 2.0.0, which prohibits using another local user then the
+  one identified by the environment variable. You can change this behaviour
+  with the following configuration:
+
+        $wgAuthRemoteuserAllowUserSwitch = false; // default
+
+        $wgAuthRemoteuserAllowUserSwitch = true;
+
+* As an immutable SessionProvider (see `AllowUserSwitch` config above) all
+  special pages and login/logout links for authentication aren't needed
+  anymore by the identified user. If you still want them to be shown, for
+  example if you are using other session providers besides this one, then
+  set the following accordingly:
+
+        $wgAuthRemoteuserRemoveAuthPagesAndLinks = true; // default
+
+        $wgAuthRemoteuserRemoveAuthPagesAndLinks = false;
+
+* If you are using other SessionProvider extensions besides this one, you
+  have to specify their significance by using an ascending priority:
+
+        $wgAuthRemoteuserPriority = 50; // default
+
+        $wgAuthRemoteuserPriority = SessionInfo::MAX_PRIORITY;
 
 
 Upgrade
