@@ -132,17 +132,6 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	 */
 	public function __construct( $params = [] ) {
 
-		# The cookie prefix used by our parent will be the same as our class name to
-		# not interfere with cookies set by other instances of our parent.
-		$prefix = str_replace( '\\', '_', get_class( $this ) );
-		$params += [
-			'sessionName' => $prefix . '_session',
-			'cookieOptions' => []
-		];
-		$params[ 'cookieOptions' ] += [ "prefix" => $prefix ];
-
-		parent::__construct( $params );
-
 		# Setup configuration defaults.
 		$defaults = [
 			'remoteUserNames' => [],
@@ -159,16 +148,10 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			if ( array_key_exists( $key, $params ) ) {
 				switch( $key ) {
 					case 'remoteUserNames':
-						$value = [];
-						$names = $params[ $key ];
-						if ( ! is_array( $names ) ) {
-							$names = [ $names ];
-						}
-						$value = $names;
-						break;
 					case 'userProps':
-						if ( is_array( $params[ $key ] ) ) {
-							$value = $params[ $key ];
+						$value = $params[ $key ];
+						if ( ! is_array( $value ) ) {
+							$value = [ $value ];
 						}
 						break;
 					default:
@@ -179,6 +162,17 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			$this->{ $key } = $value;
 		}
 
+		# The cookie prefix used by our parent will be the same as our class name to
+		# not interfere with cookies set by other instances of our parent.
+		$prefix = str_replace( '\\', '_', get_class( $this ) );
+		$params += [
+			'sessionName' => $prefix . '_session',
+			'cookieOptions' => []
+		];
+		$params[ 'cookieOptions' ] += [ "prefix" => $prefix ];
+
+		# Let our parent sanitize the rest of the configuration.
+		parent::__construct( $params );
 	}
 
 	/**
