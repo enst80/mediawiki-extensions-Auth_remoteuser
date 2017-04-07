@@ -58,6 +58,14 @@ use Closure;
 class UserNameSessionProvider extends CookieSessionProvider {
 
 	/**
+	 * The identifier of the hook this class provides for filtering of usernames.
+	 *
+	 * @var string
+	 * @since 2.0.0
+	 */
+	const HOOKNAME = __CLASS__ . "FilterUserName";
+
+	/**
 	 * The remote user name(s) given as an array.
 	 *
 	 * @var string[]
@@ -122,7 +130,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	 *   evaluated and should return the according value. The following keys are
 	 *   handled individually:
 	 *   * `realname` - Specifies the users real (display) name.
-	 *   * `emailaddress` - Specifies the users email address.
+	 *   * `email` - Specifies the users email address.
 	 * * `forceUserProps` - @see self::$forceUserProps
 	 * * `autoCreateUser` - @see self::$autoCreateUser
 	 * * `switchUser` - @see self::$switchUser
@@ -148,10 +156,20 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			if ( array_key_exists( $key, $params ) ) {
 				switch( $key ) {
 					case 'remoteUserNames':
+						$value = [];
+						$names = $params[ $key ];
+						if ( !is_array( $names ) ) {
+							$names = [ $names ];
+						}
+						foreach( $names as $name ) {
+							if ( is_string( $name ) || $name instanceof Closure ) {
+								$value[] = $name;
+							}
+						}
+						break;
 					case 'userProps':
-						$value = $params[ $key ];
-						if ( ! is_array( $value ) ) {
-							$value = [ $value ];
+						if ( is_array( $params[ $key ] ) ) {
+							$value = $params[ $key ];
 						}
 						break;
 					default:
@@ -210,16 +228,26 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			# returning false. This can be used by the wiki administrator to adjust
 			# this SessionProvider to his specific needs.
 			$filteredUserName = $remoteUserName;
-			if ( !Hooks::run( 'Auth_remoteuser_filterUserName', [ &$filteredUserName ] ) ) {
+			if ( !Hooks::run( static::HOOKNAME, [ &$filteredUserName ] ) ) {
 				$metadata[ 'filteredUserName' ] = $filteredUserName;
 				$this->logger->warning(
 					"Can't login remote user '{remoteUserName}' automatically. " .
-					"Blocked this user when filtering it to '{filteredUserName}'.",
+					"Blocked this user when applying filter to '{filteredUserName}'.",
 					$metadata
 				);
 				continue;
 			}
-			$metadata[ 'filteredUserName' ] = $filteredUserName;
+			$metadata[ 'filteredUserName' ] = (string)$filteredUserName;
+
+			if ( !is_string( $filteredUserName ) || empty( $filteredUserName ) ) {
+				$this->logger->warning(
+					"Can't login remote user '{remoteUserName}' automatically. " .
+					"Filtered remote user name '{filteredUserName}' is not of " .
+					"type string or empty.",
+					$metadata
+				);
+				continue;
+			}
 
 			# Create a UserInfo (and User) object by given user name. The factory
 			# method will take care of correct validation of user names. It will also
@@ -286,7 +314,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			#
 			# @see AuthManager::AutoCreateBlacklist
 			# @see AuthManager::autoCreateUser()
-			if ( $sessionInfo && ! $userInfo->getId() ) {
+			if ( $sessionInfo && !$userInfo->getId() ) {
 				$anon = $userInfo->getUser();
 				$permissions = $anon->getGroupPermissions( $anon->getEffectiveGroups() );
 				if ( in_array( 'autocreateaccount', $permissions, true ) ||
@@ -299,7 +327,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 
 			# Our parent class couldn't provide any info. This means we can create a
 			# new session with our identified user.
-			if ( ! $sessionInfo ) {
+			if ( !$sessionInfo ) {
 				$sessionInfo = new SessionInfo( $this->priority, [
 					'provider' => $this,
 					'id' => $this->manager->generateSessionId(),
@@ -375,20 +403,34 @@ class UserNameSessionProvider extends CookieSessionProvider {
 		);
 
 		$disableSpecialPages = [];
+		$disablePersonalUrls = [ 'logout' ];
+
+		# Disable any special pages related to user switching.
+		if ( !$this->switchUser ) {
+			$disableSpecialPages += [
+				'Userlogin',
+				'Userlogout',
+				'CreateAccount',
+				'LinkAccounts',
+				'UnlinkAccounts',
+				'ChangeCredentials',
+				'RemoveCredentials'
+			];
+		}
 
 		# This can only be true, if our `switchUser` member is set to true and the
 		# user identified by us uses another local wiki user for this session.
 		$switchedUser = ( $info->getUserInfo()->getId() !== $metadata[ 'userId' ] ) ? true : false;
 
 		# Disable password related special pages and hide preference option.
-		if ( ! $switchedUser ) {
+		if ( !$switchedUser ) {
 			$disableSpecialPages += [ 'ChangePassword', 'PasswordReset' ];
 			global $wgHiddenPrefs;
 			$wgHiddenPrefs[] = 'password';
 		}
 
-		# Set user preference default values.
-		if ( ! $switchedUser && $this->userProps ) {
+		# Set user preference values.
+		if ( !$switchedUser && $this->userProps ) {
 
 			$container = [
 				'properties' => $this->userProps,
@@ -417,18 +459,18 @@ class UserNameSessionProvider extends CookieSessionProvider {
 					function( $user, &$prefs ) use ( $properties ) {
 						foreach( $properties as $property ) {
 
-							if ( $property === 'email' ) {
+							if ( 'email' === $property ) {
 								$property = 'emailaddress';
 							}
 
-							if ( ! isset( $prefs[ $property ] ) ) {
+							if ( !isset( $prefs[ $property ] ) ) {
 								continue;
 							}
 
 							# Email preference needs special treatment, because it will display a
 							# link to change the address. We have to replace that with the address
 							# only.
-							if ( $property === 'emailaddress' ) {
+							if ( 'emailaddress' === $property ) {
 								$prefs[ $property ][ 'default' ] = $user->getEmail() ?
 									htmlspecialchars( $user->getEmail() ) : '';
 							}
@@ -459,48 +501,30 @@ class UserNameSessionProvider extends CookieSessionProvider {
 
 		}
 
-		# Disable any special pages related to user authentication.
-		if ( ! $this->switchUser ) {
-			$disableSpecialPages += [
-				'Userlogin',
-				'Userlogout',
-				'CreateAccount',
-				'LinkAccounts',
-				'UnlinkAccounts',
-				'ChangeCredentials',
-				'RemoveCredentials'
-			];
-		}
-
-		# Don't remove anything (besides `CreateAccount` maybe).
-		# Be aware of the following security vulnerability. If someone created an
-		# account with the same name as a new and authenticated user has, then this
-		# new user will have full access to that account, because we will authorize
-		# him by his name only (without password verification).
-		if ( ! $this->removeAuthPagesAndLinks ) {
+		# Don't remove anything.
+		if ( !$this->removeAuthPagesAndLinks ) {
 			$disableSpecialPages = [];
+			$disablePersonalUrls = [];
 		}
 
 		Hooks::register(
-			'SpecialPage_initList', [
-				function ( &$specials ) use ( $disableSpecialPages ) {
-					foreach ( $disableSpecialPages as $page ) {
-						unset( $specials[ $page ] );
-					}
-					return true;
+			'SpecialPage_initList',
+			function ( &$specials ) use ( $disableSpecialPages ) {
+				foreach ( $disableSpecialPages as $page ) {
+					unset( $specials[ $page ] );
 				}
-			]
-		);
-
-		# Let us remove the `logout` link in any case (independent of our
-		# `switchUser` setting), because using an anonymous user is something we
-		# want to avert while using this extension.
-		Hooks::register( 'PersonalUrls', [
-			function ( &$personalurls, &$title ) {
-				unset( $personalurls[ 'logout' ] );
 				return true;
 			}
-			]
+		);
+
+		Hooks::register(
+			'PersonalUrls',
+			function ( &$personalurls, &$title ) use ( $disablePersonalUrls ) {
+				foreach ( $disablePersonalUrls as $url ) {
+					unset( $personalurls[ $url ] );
+				}
+				return true;
+			}
 		);
 
 		return true;
@@ -596,54 +620,6 @@ class UserNameSessionProvider extends CookieSessionProvider {
 				$user->saveSettings();
 			}
 		}
-
-	}
-
-	/**
-	 * Helper method to apply replacement patterns to a remote user name
-	 * before using it as an identifier into the local wiki user database.
-	 *
-	 * Method uses the `Auth_remoteuser_filterUserName` hook.
-	 *
-	 * Some examples:
-	 * ```
-	 * '/_/' => ' '                   // replace underscore character with space
-	 * '/@domain.example.com$/' => '' // strip Kerberos principal from back
-	 * '/^domain\\\\/' => ''          // remove NTLM domain from front
-	 * '/johndoe/' => 'Admin'         // rewrite username
-	 * ```
-	 *
-	 * @param array $params Array of search and replace patterns.
-	 * @throws UnexpectedValueException Wrong parameter type given.
-	 * @see preg_replace()
-	 * @since 2.0.0
-	 */
-	public static function setUserNameFilters( $params = [] ) {
-
-		if ( !is_array( $params ) ) {
-			throw new UnexpectedValueException( __METHOD__ . ' expects an array as parameter.' );
-		}
-
-		Hooks::register( 'Auth_remoteuser_filterUserName', [
-			function ( $replacepatterns, &$username ) {
-
-				$replaced = $username;
-
-				foreach ( $replacepatterns as $pattern => $replacement ) {
-					$replaced = preg_replace( $pattern, $replacement, $replaced );
-					if ( null === $replaced ) { break; }
-				}
-
-				if ( null === $replaced ) {
-					return false;
-				}
-
-				$username = $replaced;
-				return true;
-			},
-			$params
-			]
-		);
 
 	}
 

@@ -48,18 +48,27 @@ Just add them to your `LocalSettings.php`. Default values, which you don't
 have to set explicitly are marked with the `// default` comment.
 
 * Set the name(s) to use for mapping into the local wiki user database. This
-  can either be a simple string, a closure or an array of strings and/or
-  closures. If the value is `null`, the extensions defaults to using the
-  environment variable `REMOTE_USER`. The first name in the given list, which
-  matches an user name in the local wiki database will be taken for login.
-  Examples:
+  can either be a simple string, a closure or a mixed array of strings and/or
+  closures. If the value is `null`, the extension defaults to using the
+  environment variables `REMOTE_USER` and `REDIRECT_REMOTE_USER`. The first
+  name in the given list, which matches an user name in the local wiki
+  database will be taken for login. Examples:
 
-        $wgAuthRemoteuserUserNames = null; // default
+        $wgAuthRemoteuserUserName = null; // default
 
-        $wgAuthRemoteuserUserNames = $_SERVER[ 'REMOTE_USER' ];
-        $wgAuthRemoteuserUserNames[] = $_SERVER[ 'REDIRECT_REMOTE_USER' ];
-        $wgAuthRemoteuserUserNames[] = $_SERVER[ 'LOGON_USER' ];
+        $wgAuthRemoteuserUserName = ""; // Will evaluate to nothing.
+        $wgAuthRemoteuserUserName = []; // Will evaluate to nothing.
 
+        // This is not adviced, because it will evaluate every visitor to
+        // the same user.
+        $wgAuthRemoteuserUserName = "Everybody";
+
+        // Iterate through an array of given user name sources.
+        $wgAuthRemoteuserUserName = [ $_SERVER[ 'REMOTE_USER' ];
+        $wgAuthRemoteuserUserName[] = $_SERVER[ 'REDIRECT_REMOTE_USER' ];
+        $wgAuthRemoteuserUserName[] = $_SERVER[ 'LOGON_USER' ];
+
+        // Create a closure instead of providing strings directly.
         $wgAuthRemoteUserNames = function() {
             $credentials = explode( ':', $_SERVER[ 'HTTP_AUTHORIZATION' ] );
             $username = $credentials[0];
@@ -92,24 +101,24 @@ have to set explicitly are marked with the `// default` comment.
   a Kerberos principal from the end or replacing some invalid characters, set
   an array of replacement patterns to the following configuration variable:
 
-        $wgAuthRemoteuserUserNameFilters = array(); // default
+        $wgAuthRemoteuserUserNameReplaceFilter = array(); // default
 
-        $wgAuthRemoteuserUserNameFilters = array(
-            '/_/' => ' ',                    // replace underscores with spaces
-            '/@domain.example.com$/' => '',  // strip Kerberos principal from back
-            '/^domain\\\\/' => '',           // strip NTLM domain from front
-            '/johndoe/' => 'Admin'           // rewrite user johndoe to user Admin
+        $wgAuthRemoteuserUserNameReplaceFilter = array(
+            '_' => ' ',                   // replace underscores with spaces
+            '@domain.example.com$' => '', // strip Kerberos principal from back
+            '^domain\\' => '',            // strip NTLM domain from front
+            'johndoe' => 'Admin'          // rewrite user johndoe to user Admin
         );
 
   If you need further processing, maybe blacklisting some usernames or
-  something else, you can use the hook `Auth_remoteuser_filterUserName`
+  something else, you can use the hook `AuthRemoteuserFilterUserName`
   provided by this extension. Just have a look at mediawikis Hook
   documentation on how to register additional functions to this hook.
   For example, if you need to forbid the automatic login for specific user
   accounts all starting with the same characters, you would implement this
   as follows:
 
-        Hooks::register( 'Auth_remoteuser_filterUserName',
+        Hooks::register( 'AuthRemoteuserFilterUserName',
             function ( &$userName ) {
                 $needle = 'f_';
                 $length = strlen( $needle );
@@ -136,20 +145,12 @@ have to set explicitly are marked with the `// default` comment.
 
         $wgAuthRemoteuserRemoveAuthPagesAndLinks = false;
 
-  Note: If your `RemoveAuthPagesAndLinks` configuration value is set to
-  false, then, independent of your setting of `AllowUserSwitch`, the logout
-  button in the users personal urls bar will be removed. Because a logout
-  is the same as using an anonymous user, which is a case we want to avert
-  when using this extension. If `AllowUserSwitch` is set to true he can still
-  logging in by calling the special page `Special:UserLogin` directly (or
-  from the link on `Special:SpecialPages`).
-
 * When you have further user information available in your environment, which
-  can be tied to a created user, for example email adress or real name, then
+  can be tied to a created user, for example email address or real name, then
   use the following configuration variable. It expects an array of key value
   pairs of which 'realname' and 'email' corresponds to the new users real name
   and email address, while you can specify further key value pairs to get them
-  mapped to the users preferences:
+  mapped to according users preferences:
 
         $wgAuthRemoteuserUserProps = array(); // default
 
@@ -176,9 +177,9 @@ have to set explicitly are marked with the `// default` comment.
   is an associative array with the following keys:
   * `userId` - id of user in local wiki database or 0 if new/anonymous
   * `remoteUserName` - value as given by the environment
-  * `filteredUserName` - after running `Auth_remoteuser_filterUserName` hook
+  * `filteredUserName` - after running `AuthRemoteuserFilterUserName` hook
   * `canonicalUserName` - representation in the local wiki database
-  * `canonicalUserNameUsed` - the user (name) used for the current session
+  * `canonicalUserNameUsed` - the user name used for the current session
 
   Take the following as an example in which a shellscript is getting executed
   only when a user is created and not on every page reload:
@@ -224,7 +225,7 @@ ones, the following list can guide you:
 * `$wgAuthRemoteuserName` - Superseded by `$wgRemoteuserUserProps`.
 * `$wgAuthRemoteuserMail` - Superseded by `$wgRemoteuserUserProps`.
 * `$wgAuthRemoteuserNotify` - Superseded by `$wgRemoteuserUserProps`.
-* `$wgAuthRemoteuserDomain` - Superseded by `$wgRemoteuserUserNameFilters`.
+* `$wgAuthRemoteuserDomain` - Superseded by `$wgRemoteuserUserNameReplaceFilter`.
 * `$wgAuthRemoteuserMailDomain` - Superseded by `$wgRemoteuserUserProps`.
 
 

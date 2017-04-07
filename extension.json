@@ -6,8 +6,8 @@
 	},
 	"config": {
 		"_prefix": "wgAuthRemoteuser",
-		"UserNames": null,
-		"UserNameFilters": [],
+		"UserName": null,
+		"UserNameReplaceFilter": [],
 		"UserProps": [],
 		"ForceUserProps": true,
 		"AutoCreateUser": true,
