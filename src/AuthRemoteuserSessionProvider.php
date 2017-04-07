@@ -57,7 +57,6 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 	 * * `$wgAuthRemoteuserUserNameReplaceFilter`
 	 * * `$wgAuthRemoteuserUserProps`
 	 * * `$wgAuthRemoteuserForceUserProps`
-	 * * `$wgAuthRemoteuserAutoCreateUser`
 	 * * `$wgAuthRemoteuserAllowUserSwitch`
 	 * * `$wgAuthRemoteuserRemoveAuthPagesAndLinks`
 	 * * `$wgAuthRemoteuserPriority`
@@ -75,7 +74,6 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 			'UserName' => 'remoteUserNames',
 			'UserProps' => 'userProps',
 			'ForceUserProps' => 'forceUserProps',
-			'AutoCreateUser' => 'autoCreateUser',
 			'AllowUserSwitch' => 'switchUser',
 			'RemoveAuthPagesAndLinks' => 'removeAuthPagesAndLinks',
 			'Priority' => 'priority'

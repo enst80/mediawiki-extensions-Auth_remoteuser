@@ -91,15 +91,6 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	protected $forceUserProps;
 
 	/**
-	 * Indicates if local users (as of yet unknown to the MediaWiki database)
-	 * should be created automatically.
-	 *
-	 * @var boolean
-	 * @since 2.0.0
-	 */
-	protected $autoCreateUser;
-
-	/**
 	 * Indicates if the automatically logged-in user can switch to another local
 	 * MediaWiki account while still beeing identified by the remote user name.
 	 *
@@ -132,7 +123,6 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	 *   * `realname` - Specifies the users real (display) name.
 	 *   * `email` - Specifies the users email address.
 	 * * `forceUserProps` - @see self::$forceUserProps
-	 * * `autoCreateUser` - @see self::$autoCreateUser
 	 * * `switchUser` - @see self::$switchUser
 	 * * `removeAuthPagesAndLinks` - @see self::$removeAuthPagesAndLinks
 	 *
@@ -145,7 +135,6 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			'remoteUserNames' => [],
 			'userProps' => null,
 			'forceUserProps' => false,
-			'autoCreateUser' => true,
 			'switchUser' => false,
 			'removeAuthPagesAndLinks' => true
 		];
@@ -274,21 +263,6 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			}
 			$metadata[ 'userId' ] = $userInfo->getId();
 			$metadata[ 'canonicalUserName' ] = $userInfo->getName();
-
-			# We aren't allowed to autocreate new users, therefore we won't provide any
-			# session infos.
-			#
-			# @see User::isAnon()
-			# @see User::isLoggedIn()
-			# @see UserInfo::getId()
-			if ( !( $this->autoCreateUser || $userInfo->getId() ) ) {
-				$this->logger->warning(
-					"Can't login remote user '{remoteUserName}' automatically. " .
-					"Creation of new users not allowed in current configuration.",
-					$metadata
-				);
-				continue;
-			}
 
 			# Let our parent class find a valid SessionInfo.
 			$sessionInfo = parent::provideSessionInfo( $request );

@@ -30,13 +30,19 @@ file `LocalSettings.php`:
 
 Take account of the global permissions for account creation. At least one of
 them must be `true` for anonymous users to led this extension create accounts
-for them (independent of its own configuration setting `AutoCreateUser` below):
+for users as of yet unknown to the wiki database. (If you set this to `false`,
+then automatic login works only for users who have a wiki account already.):
 
     $wgGroupPermission['*']['createaccount'] = true;
 
-    // or if account creation by anonymous users is forbidden
+    // If account creation by anonymous users is forbidden, then allow
+    // it at least for beeing created automatically.
     $wgGroupPermission['*']['createaccount'] = false;
     $wgGroupPermission['*']['autocreateaccount'] = true;
+
+    // Only login a user automatically, who is known to the wiki already.
+    $wgGroupPermission['*']['createaccount'] = false;
+    $wgGroupPermission['*']['autocreateaccount'] = false;
 
 
 Configuration
@@ -83,18 +89,6 @@ have to set explicitly are marked with the `// default` comment.
         $wgAuthRemoteuserPriority = 50; // default
 
         $wgAuthRemoteuserPriority = SessionInfo::MAX_PRIORITY;
-
-* Indicate wether a new user, authenticated by the webserver and identified
-  by this extension, but yet unknown to the wiki should be created or not:
-
-        $wgAuthRemoteuserAutoCreateUser = true; // default
-
-        $wgAuthRemoteuserAutoCreateUser = false;
-
-  This setting is independent of the global permission for account creation
-  `$wgGroupPermission[]['autocreateaccount']`. Set this configuration to
-  `false` if you're using other session providers and all but this one can
-  create new users.
 
 * When you need to process your environment variable value before it can be
   used as an identifier into the wiki username list, for example to strip
@@ -193,10 +187,10 @@ have to set explicitly are marked with the `// default` comment.
         )
 
 * If you have user properties specified (see `UserProps` config above), then
-  you can set them for new users only (see `AutoCreateUser` config) or force
-  their setting. For example if your users email is specified by an external
-  source and you don't want the user to change this email inside MediaWiki,
-  then set the following configuration variable to true:
+  you can set them for new users only or force their setting. For example if
+  your users email is specified by an external source and you don't want the
+  user to change this email inside MediaWiki, then set the following
+  configuration variable to true:
 
         $wgAuthRemoteuserForceUserProps = true; // default
 

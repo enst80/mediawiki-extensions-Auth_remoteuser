@@ -10,7 +10,6 @@
 		"UserNameReplaceFilter": [],
 		"UserProps": [],
 		"ForceUserProps": true,
-		"AutoCreateUser": true,
 		"AllowUserSwitch": false,
 		"RemoveAuthPagesAndLinks": true,
 		"Priority": 50
