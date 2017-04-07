@@ -164,11 +164,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 						if ( ! is_array( $names ) ) {
 							$names = [ $names ];
 						}
-						foreach( $names as $name ) {
-							if ( is_string( $name ) || $name instanceof Closure ) {
-								$value[] = $name;
-							}
-						}
+						$value = $names;
 						break;
 					case 'userProps':
 						if ( is_array( $params[ $key ] ) ) {
@@ -203,8 +199,17 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			}
 
 			# Keep info about remote-to-local user name processing for logging and
-			# provider metadata.
-			$metadata = [ 'remoteUserName' => $remoteUserName ];
+			# and later for provider metadata.
+			$metadata = [ 'remoteUserName' => (string)$remoteUserName ];
+
+			if ( !is_string( $remoteUserName ) || empty( $remoteUserName ) ) {
+				$this->logger->warning(
+					"Can't login remote user '{remoteUserName}' automatically. " .
+					"Given remote user name is not of type string or empty.",
+					$metadata
+				);
+				continue;
+			}
 
 			# Process each given remote user name if needed, e.g. strip NTLM domain,
 			# replace characters, rewrite to another username or even blacklist it by
