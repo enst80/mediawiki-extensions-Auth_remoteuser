@@ -58,7 +58,7 @@ use Closure;
 class UserNameSessionProvider extends CookieSessionProvider {
 
 	/**
-	 * The identifier of the hook this class provides for filtering of usernames.
+	 * The hook identifier this class provides to filter user names.
 	 *
 	 * @var string
 	 * @since 2.0.0

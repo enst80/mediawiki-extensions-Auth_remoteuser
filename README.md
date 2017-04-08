@@ -89,35 +89,57 @@ have to set explicitly are marked with the `// default` comment.
                 ? $username : "";
         };
 
-* When you need to process your environment variable value before it can be
-  used as an identifier into the wiki username list, for example to strip
-  a Kerberos principal from the end or replacing some invalid characters, set
-  an array of replacement patterns to the following configuration variable:
+* When you need to process your remote user name before it can be used
+  as an identifier into the wiki user list, for example to strip a
+  Kerberos principal from the end, replacing invalid characters, or
+  blacklisting some names, use the hook `AuthRemoteuserFilterUserName`
+  provided by this extension. Just have a look at MediaWikis Hook
+  documentation on how to register additional functions to this hook. It
+  provides as first parameter the remote user name by reference to the
+  hook function. If the function returns false, the remote user name
+  will be ignored for automatic login.
 
-        $wgAuthRemoteuserUserNameReplaceFilter = []; // default
+* This extension comes with predefined remote user name filters (which
+  are using the hook mentioned above). If you want to replace something,
+  set an array of replacement patterns to the following configuration
+  variable (Each search pattern can be in PCRE syntax too):
+
+        $wgAuthRemoteuserUserNameReplaceFilter = null; // default
 
         $wgAuthRemoteuserUserNameReplaceFilter = [
-            '_' => ' ',                  // replace underscores with spaces
-            '@INTRA.EXAMPLE.COM$' => '', // strip Kerberos principal from back
+            '_' => ' ',                  // replace underscores with
+                                         // spaces
+            '@INTRA.EXAMPLE.COM$' => '', // strip Kerberos principal
+                                         // from back
             '^domain\\' => '',           // strip NTLM domain from front
-            'johndoe' => 'Admin'         // rewrite user johndoe to user Admin
+            'johndoe' => 'Admin',        // rewrite user johndoe
+            '/JaNeDoE/i' => 'Admin'      // rewrite all case-insensitive
+                                         // versions of janedoe
         ];
 
-  If you need further processing, maybe blacklisting some usernames or
-  something else, you can use the hook `AuthRemoteuserFilterUserName`
-  provided by this extension. Just have a look at mediawikis Hook
-  documentation on how to register additional functions to this hook.
-  For example, if you need to forbid the automatic login for specific user
-  accounts all starting with `f_`, you would implement this
-  as follows:
+* If you want to prevent some names from beeing logged in automatically,
+  blacklist them with the following filter. It accepts a list of names,
+  where each name can also be a regular expression in PCRE syntax:
 
-        Hooks::register( 'AuthRemoteuserFilterUserName',
-            function ( &$userName ) {
-                $needle = 'f_';
-                $length = strlen( $needle );
-                return !(substr( $userName, 0, $length ) === $needle );
-            }
-        );
+        $wgAuthRemoteuserUserNameBlacklistFilter = null; // default
+
+        $wgAuthRemoteuserUserNameBlacklistFilter = [
+            'johndoe',
+            'janedoe',
+            '/john/i', // matches all case-insensitive versions of john
+            '^f_'      // matches all users starting wit 'f_'
+	];
+
+* The opposite of the `UserNameBlacklistFilter` can be achieved by using
+  the following filter, which permits the automatic login instead of
+  preventing it:
+
+        $wgAuthRemoteuserUserNameWhitelistFilter = null; // default
+
+        $wgAuthRemoteuserUserNameWhitelistFilter = [
+		'john',
+		'jane'
+	];
 
 * When you have further user information available in your environment, which
   can be tied to a created user, for example email address or real name, then

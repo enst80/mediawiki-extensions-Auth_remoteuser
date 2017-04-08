@@ -7,7 +7,9 @@
 	"config": {
 		"_prefix": "wgAuthRemoteuser",
 		"UserName": null,
-		"UserNameReplaceFilter": [],
+		"UserNameReplaceFilter": null,
+		"UserNameBlacklistFilter": null,
+		"UserNameWhitelistFilter": null,
 		"UserPrefs": null,
 		"UserPrefsForced": null,
 		"AllowUserSwitch": false,

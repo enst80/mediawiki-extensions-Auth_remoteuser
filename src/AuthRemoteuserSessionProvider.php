@@ -38,6 +38,11 @@ use GlobalVarConfig;
  */
 class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 
+	/**
+	 * This extension provides the `AuthRemoteuserFilterUserName` hook.
+	 *
+	 * @since 2.0.0
+	 */
 	const HOOKNAME = "AuthRemoteuserFilterUserName";
 
 	/**
@@ -49,12 +54,14 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 	 * * `$wgAuthRemoteuserName`       superseded by `$wgRemoteuserUserPrefs`
 	 * * `$wgAuthRemoteuserMail`       superseded by `$wgRemoteuserUserPrefs`
 	 * * `$wgAuthRemoteuserNotify`     superseded by `$wgRemoteuserUserPrefs`
-	 * * `$wgAuthRemoteuserDomain`i    superseded by `$wgRemoteuserUserNameFilters`
+	 * * `$wgAuthRemoteuserDomain`     superseded by `$wgRemoteuserUserNameReplaceFilter`
 	 * * `$wgAuthRemoteuserMailDomain` superseded by `$wgRemoteuserUserPrefs`
 	 *
 	 * List of global configuration parameters:
 	 * * `$wgAuthRemoteuserUserName`
 	 * * `$wgAuthRemoteuserUserNameReplaceFilter`
+	 * * `$wgAuthRemoteuserUserNameBlacklistFilter`
+	 * * `$wgAuthRemoteuserUserNameWhitelistFilter`
 	 * * `$wgAuthRemoteuserUserPrefs`
 	 * * `$wgAuthRemoteuserUserPrefsForced`
 	 * * `$wgAuthRemoteuserAllowUserSwitch`
@@ -85,8 +92,27 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 			}
 		}
 
-		if ( $conf->has( 'UserNameReplaceFilter' ) ) {
-			self::setUserNameReplaceFilter( $conf->get( 'UserNameReplaceFilter' ) );
+		if ( $conf->has( 'UserNameReplaceFilter' ) &&
+			null !== $conf->get( 'UserNameReplaceFilter' ) ) {
+			$this->setUserNameReplaceFilter(
+				$conf->get( 'UserNameReplaceFilter' )
+			);
+		}
+
+		if ( $conf->has( 'UserNameBlacklistFilter' ) &&
+			null !== $conf->get( 'UserNameBlacklistFilter' ) ) {
+			$this->setUserNameMatchFilter(
+				$conf->get( 'UserNameBlacklistFilter' ),
+				false
+			);
+		}
+
+		if ( $conf->has( 'UserNameWhitelistFilter' ) &&
+			null !== $conf->get( 'UserNameWhitelistFilter' ) ) {
+			$this->setUserNameMatchFilter(
+				$conf->get( 'UserNameWhitelistFilter' ),
+				true
+			);
 		}
 
 		# Set default remote user name source if no other is specified.
@@ -141,11 +167,9 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 
 		# Evaluation of legacy parameter `$wgAuthRemoteuserDomain`.
 		#
-		# Ignored when the new equivalent `$wgAuthRemoteuserUserNameFilters` is set.
-		#
 		# @deprecated 2.0.0
-		if ( $conf->has( 'Domain' ) && is_string( $conf->get( 'Domain' ) ) && $conf->get( 'Domain' ) !== '' && !$conf->has( 'UserNameReplaceFilter' ) ) {
-			self::setUserNameReplaceFilter( [
+		if ( $conf->has( 'Domain' ) && is_string( $conf->get( 'Domain' ) ) && $conf->get( 'Domain' ) !== '' ) {
+			$this->setUserNameReplaceFilter( [
 				'@' . $conf->get( 'Domain' ) . '$' => '',
 				'^' . $conf->get( 'Domain' ) . '\\' => ''
 			] );
@@ -155,10 +179,10 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 		#
 		# Can't be used directly at this point of execution until we have our a valid
 		# user object with the according user name. Therefore we have to use the
-		# closure feature of the user property values to defer the evaluation.
+		# closure feature of the user preference values to defer the evaluation.
 		#
 		# @deprecated 2.0.0
-		if ( $conf->has( 'MailDomain' ) && is_string ( $conf->get( 'MailDomain' ) ) && $conf->get( 'MailDomain' ) !== '' ) {
+		if ( $conf->has( 'MailDomain' ) && is_string( $conf->get( 'MailDomain' ) ) && $conf->get( 'MailDomain' ) !== '' ) {
 			$domain = $conf->get( 'MailDomain' );
 			$params[ 'userPrefs' ] += [
 				'email' => function( $metadata ) use( $domain )  {
@@ -175,26 +199,18 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 	}
 
 	/**
-	 * Helper method to apply replacement patterns to a remote user name
-	 * before using it as an identifier into the local wiki user database.
+	 * Helper method to apply replacement patterns to a remote user name before
+	 * using it as an identifier into the local wiki user database.
 	 *
-	 * Method uses the provided hook and accepts regular expressions as
-	 * search patterns.
-	 *
-	 * Some examples:
-	 * ```
-	 * '_' => ' '                   // replace underscore character with space
-	 * '@domain.example.com$' => '' // strip Kerberos principal from back
-	 * '^domain\\' => ''            // remove NTLM domain from front
-	 * 'johndoe' => 'Admin'         // rewrite username
-	 * ```
+	 * Method uses the provided hook and accepts regular expressions as search
+	 * patterns.
 	 *
 	 * @param array $replacepatterns Array of search and replace patterns.
 	 * @throws UnexpectedValueException Wrong parameter type given.
 	 * @see preg_replace()
 	 * @since 2.0.0
 	 */
-	public static function setUserNameReplaceFilter( $replacepatterns = [] ) {
+	public function setUserNameReplaceFilter( $replacepatterns ) {
 
 		if ( !is_array( $replacepatterns ) ) {
 			throw new UnexpectedValueException( __METHOD__ . ' expects an array as parameter.' );
@@ -203,20 +219,64 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 		Hooks::register(
 			static::HOOKNAME,
 			function ( &$username ) use ( $replacepatterns ) {
-
 				foreach ( $replacepatterns as $pattern => $replacement ) {
-
-					$pattern = str_replace( '\\', '\\\\', $pattern );
-					$pattern = str_replace( '/', '\\/', $pattern );
-					$replaced = preg_replace( "/$pattern/", $replacement, $username );
+					# If $pattern is no regex, create one from it.
+					if ( @preg_match( $pattern, null ) === false ) {
+						$pattern = str_replace( '\\', '\\\\', $pattern );
+						$pattern = str_replace( '/', '\\/', $pattern );
+						$pattern = "/$pattern/";
+					}
+					$replaced = preg_replace( $pattern, $replacement, $username );
 					if ( null === $replaced ) {
 						return false;
 					}
 					$username = $replaced;
-
 				}
-
 				return true;
+			}
+		);
+
+	}
+
+	/**
+	 * Helper method to create a filter which matches the user name against a
+	 * given list.
+	 *
+	 * Uses the provided hook. Each of the provided names can be a regular
+	 * expression too.
+	 *
+	 * @param string[] $names List of names to match remote user name against.
+	 * @param boolean $allow Either allow or disallow if name matches.
+	 * @throws UnexpectedValueException Wrong parameter type given.
+	 * @see preg_match()
+	 * @since 2.0.0
+	 */
+	public function setUserNameMatchFilter( $names, $allow ) {
+
+		if ( !is_array( $names ) ) {
+			throw new UnexpectedValueException( __METHOD__ . ' expects an array as parameter.' );
+		}
+
+		$allow = (bool)$allow;
+
+		Hooks::register(
+			static::HOOKNAME,
+			function ( &$username ) use ( $names, $allow ) {
+				if ( isset( $names[ $username ] ) ) {
+					return $allow;
+				}
+				foreach ( $names as $pattern ) {
+					# If $pattern is no regex, create one from it.
+					if ( @preg_match( $pattern, null ) === false ) {
+						$pattern = str_replace( '\\', '\\\\', $pattern );
+						$pattern = str_replace( '/', '\\/', $pattern );
+						$pattern = "/$pattern/";
+					}
+					if ( preg_match( $pattern, $username ) ) {
+						return $allow;
+					}
+				}
+				return !$allow;
 			}
 		);
 
