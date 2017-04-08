@@ -8,8 +8,8 @@
 		"_prefix": "wgAuthRemoteuser",
 		"UserName": null,
 		"UserNameReplaceFilter": [],
-		"UserProps": [],
-		"ForceUserProps": true,
+		"UserPrefs": null,
+		"UserPrefsForced": null,
 		"AllowUserSwitch": false,
 		"RemoveAuthPagesAndLinks": true,
 		"Priority": 50

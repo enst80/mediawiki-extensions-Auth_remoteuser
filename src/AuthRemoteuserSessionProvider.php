@@ -46,17 +46,17 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 	 * Legacy extension parameters are still fully supported, but new parameters
 	 * taking precedence over legacy ones. List of legacy parameters:
 	 * * `$wgAuthRemoteuserAuthz`      equivalent to disabling the extension
-	 * * `$wgAuthRemoteuserName`       superseded by `$wgRemoteuserUserProps`
-	 * * `$wgAuthRemoteuserMail`       superseded by `$wgRemoteuserUserProps`
-	 * * `$wgAuthRemoteuserNotify`     superseded by `$wgRemoteuserUserProps`
-	 * * `$wgAuthRemoteuserDomain`     superseded by `$wgRemoteuserUserNameFilters`
-	 * * `$wgAuthRemoteuserMailDomain` superseded by `$wgRemoteuserUserProps`
+	 * * `$wgAuthRemoteuserName`       superseded by `$wgRemoteuserUserPrefs`
+	 * * `$wgAuthRemoteuserMail`       superseded by `$wgRemoteuserUserPrefs`
+	 * * `$wgAuthRemoteuserNotify`     superseded by `$wgRemoteuserUserPrefs`
+	 * * `$wgAuthRemoteuserDomain`i    superseded by `$wgRemoteuserUserNameFilters`
+	 * * `$wgAuthRemoteuserMailDomain` superseded by `$wgRemoteuserUserPrefs`
 	 *
 	 * List of global configuration parameters:
 	 * * `$wgAuthRemoteuserUserName`
 	 * * `$wgAuthRemoteuserUserNameReplaceFilter`
-	 * * `$wgAuthRemoteuserUserProps`
-	 * * `$wgAuthRemoteuserForceUserProps`
+	 * * `$wgAuthRemoteuserUserPrefs`
+	 * * `$wgAuthRemoteuserUserPrefsForced`
 	 * * `$wgAuthRemoteuserAllowUserSwitch`
 	 * * `$wgAuthRemoteuserRemoveAuthPagesAndLinks`
 	 * * `$wgAuthRemoteuserPriority`
@@ -72,8 +72,8 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 
 		$mapping = [
 			'UserName' => 'remoteUserNames',
-			'UserProps' => 'userProps',
-			'ForceUserProps' => 'forceUserProps',
+			'UserPrefs' => 'userPrefs',
+			'UserPrefsForced' => 'userPrefsForced',
 			'AllowUserSwitch' => 'switchUser',
 			'RemoveAuthPagesAndLinks' => 'removeAuthPagesAndLinks',
 			'Priority' => 'priority'
@@ -97,10 +97,10 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 			];
 		}
 
-		# Prepare `userProps` configuration for legacy parameter evaluation.
-		if ( !isset( $params[ 'userProps' ] ) ||
-			!is_array( $params[ 'userProps' ] ) ) {
-			$params[ 'userProps' ] = [];
+		# Prepare `userPrefs` configuration for legacy parameter evaluation.
+		if ( !isset( $params[ 'userPrefs' ] ) ||
+			!is_array( $params[ 'userPrefs' ] ) ) {
+			$params[ 'userPrefs' ] = [];
 		}
 
 		# Evaluation of legacy parameter `$wgAuthRemoteuserAuthz`.
@@ -116,14 +116,14 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 		#
 		# @deprecated 2.0.0
 		if ( $conf->has( 'Name' ) && is_string( $conf->get( 'Name' ) ) && $conf->get( 'Name' ) !== '' ) {
-			$params[ 'userProps' ] += [ 'realname' => $conf->get( 'Name' ) ];
+			$params[ 'userPrefs' ] += [ 'realname' => $conf->get( 'Name' ) ];
 		}
 
 		# Evaluation of legacy parameter `$wgAuthRemoteuserMail`.
 		#
 		# @deprecated 2.0.0
 		if ( $conf->has( 'Mail' ) && is_string( $conf->get( 'Mail' ) ) && $conf->get( 'Mail' ) !== '' ) {
-			$params[ 'userProps' ] += [ 'email' => $conf->get( 'Mail' ) ];
+			$params[ 'userPrefs' ] += [ 'email' => $conf->get( 'Mail' ) ];
 		}
 
 		# Evaluation of legacy parameter `$wgAuthRemoteuserNotify`.
@@ -131,7 +131,7 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 		# @deprecated 2.0.0
 		if ( $conf->has( 'Notify' ) ) {
 			$notify = $conf->get( 'Notify' ) ? 1 : 0;
-			$params[ 'userProps' ] += [
+			$params[ 'userPrefs' ] += [
 				'enotifminoredits' => $notify,
 				'enotifrevealaddr' => $notify,
 				'enotifusertalkpages' => $notify,
@@ -160,15 +160,15 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 		# @deprecated 2.0.0
 		if ( $conf->has( 'MailDomain' ) && is_string ( $conf->get( 'MailDomain' ) ) && $conf->get( 'MailDomain' ) !== '' ) {
 			$domain = $conf->get( 'MailDomain' );
-			$params[ 'userProps' ] += [
+			$params[ 'userPrefs' ] += [
 				'email' => function( $metadata ) use( $domain )  {
 					return $metadata[ 'remoteUserName' ] . '@' . $domain;
 				}
 			];
 		}
 
-		if ( count( $params[ 'userProps' ] ) < 1 ) {
-			unset( $params[ 'userProps' ] );
+		if ( count( $params[ 'userPrefs' ] ) < 1 ) {
+			unset( $params[ 'userPrefs' ] );
 		}
 
 		parent::__construct( $params );

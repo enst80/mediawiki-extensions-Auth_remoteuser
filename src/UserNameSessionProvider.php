@@ -74,21 +74,20 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	protected $remoteUserNames;
 
 	/**
-	 * Holds additional information and preference options about an user.
+	 * User preferences applied in the moment of local account creation only.
 	 *
 	 * @var array
 	 * @since 2.0.0
 	 */
-	protected $userProps;
+	protected $userPrefs;
 
 	/**
-	 * Indicates if additional user properties should be applied to a user only in
-	 * the moment of local account creation or on each request.
+	 * User preferences applied to the user object on each request.
 	 *
-	 * @var boolean
+	 * @var array
 	 * @since 2.0.0
 	 */
-	protected $forceUserProps;
+	protected $userPrefsForced;
 
 	/**
 	 * Indicates if the automatically logged-in user can switch to another local
@@ -115,14 +114,14 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	 * * `remoteUserNames` - Either a string/closure or an array of
 	 *   strings/closures listing the given remote user name(s). Each closure
 	 *   should return a string.
-	 * * `userProps` - User preferences applied to the identified MediaWiki user
+	 * * `userPrefs` - User preferences applied to the identified MediaWiki user
 	 *   given as an array of key value pairs. Each key relates to an according
 	 *   user preference option of the same name. Closures as values getting
 	 *   evaluated and should return the according value. The following keys are
 	 *   handled individually:
 	 *   * `realname` - Specifies the users real (display) name.
 	 *   * `email` - Specifies the users email address.
-	 * * `forceUserProps` - @see self::$forceUserProps
+	 * * `userPrefsForced` - @see self::$userPrefsForced
 	 * * `switchUser` - @see self::$switchUser
 	 * * `removeAuthPagesAndLinks` - @see self::$removeAuthPagesAndLinks
 	 *
@@ -133,8 +132,8 @@ class UserNameSessionProvider extends CookieSessionProvider {
 		# Setup configuration defaults.
 		$defaults = [
 			'remoteUserNames' => [],
-			'userProps' => null,
-			'forceUserProps' => false,
+			'userPrefs' => null,
+			'userPrefsForced' => null,
 			'switchUser' => false,
 			'removeAuthPagesAndLinks' => true
 		];
@@ -145,18 +144,22 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			if ( array_key_exists( $key, $params ) ) {
 				switch( $key ) {
 					case 'remoteUserNames':
-						$value = [];
+						$final = [];
 						$names = $params[ $key ];
 						if ( !is_array( $names ) ) {
 							$names = [ $names ];
 						}
 						foreach( $names as $name ) {
 							if ( is_string( $name ) || $name instanceof Closure ) {
-								$value[] = $name;
+								$final[] = $name;
 							}
 						}
+						if ( count( $final ) ) {
+							$value = $final;
+						}
 						break;
-					case 'userProps':
+					case 'userPrefs':
+					case 'userPrefsForced':
 						if ( is_array( $params[ $key ] ) ) {
 							$value = $params[ $key ];
 						}
@@ -378,6 +381,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 
 		$disableSpecialPages = [];
 		$disablePersonalUrls = [ 'logout' ];
+		$preferences = ( $this->userPrefsForced ) ? [] + $this->userPrefsForced : [];
 
 		# Disable any special pages related to user switching.
 		if ( !$this->switchUser ) {
@@ -403,76 +407,80 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			$wgHiddenPrefs[] = 'password';
 		}
 
-		# Set user preference values.
-		if ( !$switchedUser && $this->userProps ) {
-
-			$container = [
-				'properties' => $this->userProps,
-				'metadata' => $metadata
-			];
-
-			# Forcing user preferences is useful if users real name or email is provided
-			# by an external source and must not be changed by the user himself.
-			#
-			# @see $wgGroupPermissions['user']['editmyoptions']
-			if ( $this->forceUserProps ) {
-
-				$container [ 'saveToDB' ] = true;
-				self::setUserProps(
-					$container,
-					$info->getUserInfo()->getUser(),
-					true
-				);
-
-				# Do not hide forced preferences completely by using the global
-				# `$wgHiddenPrefs`, because we still want them to be shown to the user.
-				# Therefore use the according hook to disable their editing capabilities.
-				$properties = array_keys( $this->userProps );
-				Hooks::register(
-					'GetPreferences',
-					function( $user, &$prefs ) use ( $properties ) {
-						foreach( $properties as $property ) {
-
-							if ( 'email' === $property ) {
-								$property = 'emailaddress';
-							}
-
-							if ( !isset( $prefs[ $property ] ) ) {
-								continue;
-							}
-
-							# Email preference needs special treatment, because it will display a
-							# link to change the address. We have to replace that with the address
-							# only.
-							if ( 'emailaddress' === $property ) {
-								$prefs[ $property ][ 'default' ] = $user->getEmail() ?
-									htmlspecialchars( $user->getEmail() ) : '';
-							}
-
-							$prefs[ $property ][ 'disabled' ] = 'disabled';
-
-						}
+		# Set user preferences on account creation only.
+		if ( !$info->getUserInfo()->getId() ) {
+			$prefs = [] + $preferences;
+			if ( $this->userPrefs ) {
+				$prefs += $this->userPrefs;
+			}
+			Hooks::register(
+				'LocalUserCreated',
+				function( $user, $autoCreated ) use ( $prefs, $metadata ) {
+					if ( $autoCreated ) {
+						$this->setUserPrefs(
+							$user,
+							$prefs,
+							$metadata
+						);
 					}
-				);
-
-				# Disable special pages related to email preferences.
-				if ( array_key_exists( 'email', $this->userProps ) ) {
-					$disableSpecialPages += [ 'ChangeEmail', 'Confirmemail', 'Invalidateemail' ];
 				}
+			);
+		}
 
-			# Only add additional information to the user object if the user must be
-			# created in the local database with this request.
-			} elseif ( !$info->getUserInfo()->getId() ) {
+		# Set user preferences on each request.
+		#
+		# Forcing user preferences is useful if they are provided by an external
+		# source and must not be changed by the user himself.
+		#
+		# @see $wgGroupPermissions['user']['editmyoptions']
+		if ( !$switchedUser && count( $preferences ) ) {
 
-				Hooks::register(
-					'LocalUserCreated', [
-						__CLASS__ . '::setUserProps',
-						$container
-					]
-				);
+			$this->setUserPrefs(
+				$info->getUserInfo()->getUser(),
+				$preferences,
+				$metadata,
+				true
+			);
 
+			# Disable special pages related to email preferences.
+			if ( array_key_exists( 'email', $preferences ) ) {
+				$disableSpecialPages += [
+					'ChangeEmail',
+					'Confirmemail',
+					'Invalidateemail'
+				];
 			}
 
+			# Do not hide forced preferences completely by using the global
+			# `$wgHiddenPrefs`, because we still want them to be shown to the user.
+			# Therefore use the according hook to disable their editing capabilities.
+			$keys = array_keys( $preferences );
+			Hooks::register(
+				'GetPreferences',
+				function( $user, &$prefs ) use ( $keys ) {
+					foreach( $keys as $key ) {
+
+						if ( 'email' === $key ) {
+							$key = 'emailaddress';
+						}
+
+						if ( !array_key_exists( $key, $prefs ) ) {
+							continue;
+						}
+
+						# Email preference needs special treatment, because it will display a
+						# link to change the address. We have to replace that with the address
+						# only.
+						if ( 'emailaddress' === $key ) {
+							$prefs[ $key ][ 'default' ] = $user->getEmail() ?
+								htmlspecialchars( $user->getEmail() ) : '';
+						}
+
+						$prefs[ $key ][ 'disabled' ] = 'disabled';
+
+					}
+				}
+			);
 		}
 
 		# Don't remove anything.
@@ -524,47 +532,43 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	/**
 	 * Helper method to supplement (new local) users with additional information.
 	 *
-	 * This method can be used as a callback into the `LocalUserCreated` hook. The
-	 * first parameter contains an array of key => value pairs, where the keys
-	 * `realname` and `email` are taken for the users real name and email address.
-	 * All other keys in that array will be handled as an option into the users
-	 * preferences. Each value can also be of type Closure to get called when the
-	 * value gets evaluated. This type of late binding should then return the real
-	 * value and could be useful, if you want to delegate the execution of code to
-	 * a point where it is really needed and not inside `LocalSettings.php`.
+	 * The `$preferences` parameter contains an array of key => value pairs, where
+	 * the keys `realname` and `email` are taken for the users real name and email
+	 * address. All other keys in that array will be handled as an option into the
+	 * users preference settings. Each value can also be of type Closure to get
+	 * called when the value is evaluated. This type of late binding should then
+	 * return the real value and could be useful, if you want to delegate the
+	 * execution of code to a point where it is really needed and not inside
+	 * `LocalSettings.php`. The first parameter given to such an anonymous function
+	 * is an associative array with the following keys:
+	 * * `userId` - id of user in local wiki database or 0 if new/anonymous
+	 * * `remoteUserName` - value as given by the remote source
+	 * * `filteredUserName` - after running hook for filtering of user names
+	 * * `canonicalUserName` - representation in the local wiki database
+	 * * `canonicalUserNameUsed` - the user name used for the current session
 	 *
-	 * @param array $container Key value store with the following elements:
-	 *    `properties` => Array of user information and preferences.
-	 *    `metadata` => Provider metadata of the current request.
 	 * @param User $user
-	 * @param boolean $autoCreated
+	 * @param Array $preferences
+	 * @param Array $metadata
+	 * @param boolean $saveToDB Save changes to database with this funtion call.
 	 * @see User::setRealName()
 	 * @see User::setEmail()
 	 * @see User::setOption()
 	 * @since 2.0.0
 	 */
-	public static function setUserProps( $container, $user, $autoCreated = false ) {
+	public function setUserPrefs( $user, $preferences, $metadata, $saveToDB = false ) {
 
-		if ( is_array( $container ) && isset( $container[ 'properties' ] ) && is_array( $container[ 'properties' ] ) && $user instanceof User && $autoCreated ) {
+		if ( $user instanceof User && is_array( $preferences ) && is_array( $metadata ) ) {
 
-			# Create a copy of our provider metadata.
-			$metadata = ( isset( $container[ 'metadata' ] ) ) ? [] + $container[ 'metadata' ] : [];
-			# Provide a switch to save changes to the database with this funtion call.
-			$saveToDB = ( isset( $container[ 'saveToDB' ] ) ) ? $container[ 'saveToDB' ] : false;
 			# Mark changes to prevent superfluous database writings.
 			$dirty = false;
 
-			foreach ( $container[ 'properties' ] as $option => $value ) {
+			foreach ( $preferences as $option => $value ) {
 
 				# If the given value is a closure, call it to get the value. All of our
-				# provider metadata is exposed to this function as first parameter. But
-				# because it is given by reference we created a copy of it beforehand to
-				# not let the function change our metadata.
+				# provider metadata is exposed to this function as first parameter.
 				if ( $value instanceof Closure ) {
-					$value = call_user_func(
-						$value,
-						$metadata
-					);
+					$value = call_user_func( $value, $metadata );
 				}
 
 				switch ( $option ) {
