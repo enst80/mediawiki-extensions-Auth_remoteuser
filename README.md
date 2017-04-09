@@ -196,9 +196,9 @@ values, which you don't have to set explicitly are marked with the
         ]
 
 * You can replace urls in MediaWiki, if your remote source is better
-  suited for handling specific behaviour. For example be default no
+  suited for handling specific behaviour. For example by default no
   automatically logged-in user is allowed to logout (because he will be
-  loggin-in automatically again with the next request). But maybe your
+  logged-in automatically again with the next request). But maybe your
   remote source should handle that logout (so that with the next request
   there isn't a remote user name provided anymore to this extension). So
   setup an according logout url to the following key value array, which
@@ -210,6 +210,7 @@ values, which you don't have to set explicitly are marked with the
     * `&$personalurls` - array of link objects in personal urls bar
     * `&$title` - title of current page
     * `$skin` - current skin
+
   Examples:
 
         $wgAuthRemoteuserUserUrls = null; // default
@@ -274,14 +275,15 @@ have to rewrite your old `LocalSettings.php` settings. But to assist you
 in transitioning of old configuration parameters to new ones, the
 following list can guide you:
 
-* `$wgAuthRemoteuserAuthz`
-  This parameter has no equivalent new parameter, because you can achive
-  the same with not loading the extension at all.
-* `$wgAuthRemoteuserName` - Use `$wgRemoteuserUserPrefs`!
-* `$wgAuthRemoteuserMail` - Use `$wgRemoteuserUserPrefs`!
-* `$wgAuthRemoteuserNotify` - Use `$wgRemoteuserUserPrefs`!
-* `$wgAuthRemoteuserDomain` - Use `$wgRemoteuserUserNameReplaceFilter`!
-* `$wgAuthRemoteuserMailDomain` - Use `$wgRemoteuserUserPrefs`!
+* `$wgAuthRemoteuserAuthz` - This parameter has no equivalent new
+  parameter, because you can achive the same with not loading the
+  extension at all.
+* `$wgAuthRemoteuserName` - Superseded by `$wgRemoteuserUserPrefs`.
+* `$wgAuthRemoteuserMail` - Superseded by `$wgRemoteuserUserPrefs`.
+* `$wgAuthRemoteuserNotify` - Superseded by `$wgRemoteuserUserPrefs`.
+* `$wgAuthRemoteuserDomain` - Superseded by
+  `$wgRemoteuserUserNameReplaceFilter`.
+* `$wgAuthRemoteuserMailDomain` - Superseded by `$wgRemoteuserUserPrefs`.
 
 
 Additional notes
