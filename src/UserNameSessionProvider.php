@@ -63,7 +63,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	 * @var string
 	 * @since 2.0.0
 	 */
-	const HOOKNAME = __CLASS__ . "FilterUserName";
+	const HOOKNAME = "UserNameSessionProviderFilterUserName";
 
 	/**
 	 * The remote user name(s) given as an array.
