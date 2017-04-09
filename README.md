@@ -37,16 +37,16 @@ create accounts for users as of yet unknown to the wiki database. If
 you set this to `false`, then automatic login works only for users who
 have a wiki account already.:
 
-    $wgGroupPermission['*']['createaccount'] = true;
+    $wgGroupPermissions['*']['createaccount'] = true;
 
     // If account creation by anonymous users is forbidden, then allow
     // it at least for beeing created automatically.
-    $wgGroupPermission['*']['createaccount'] = false;
-    $wgGroupPermission['*']['autocreateaccount'] = true;
+    $wgGroupPermissions['*']['createaccount'] = false;
+    $wgGroupPermissions['*']['autocreateaccount'] = true;
 
     // Only login users automatically if known to the wiki already.
-    $wgGroupPermission['*']['createaccount'] = false;
-    $wgGroupPermission['*']['autocreateaccount'] = false;
+    $wgGroupPermissions['*']['createaccount'] = false;
+    $wgGroupPermissions['*']['autocreateaccount'] = false;
 
 
 Configuration
