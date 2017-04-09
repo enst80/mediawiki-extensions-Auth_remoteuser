@@ -1,17 +1,19 @@
 Auth_remoteuser
 ===============
 
-Auth_remoteuser is an extension for MediaWiki 1.27 and up which logs-in users
-into mediawiki automatically if they are already authenticated by a remote
-source. This can be anything ranging from webserver environment variables to
-request headers to arbitrary external sources if at least the remote user name
-maps to an existing user name in the local wiki database (or it can be created
-if the extension has the permissions to do so). The external source takes total
-responsibility in authenticating an authorized user.
+Auth_remoteuser is an extension for MediaWiki 1.27 and up which logs-in
+users into mediawiki automatically if they are already authenticated by
+a remote source. This can be anything ranging from webserver environment
+variables to request headers to arbitrary external sources if at least
+the remote user name maps to an existing user name in the local wiki
+database (or it can be created if the extension has the permissions to
+do so). The external source takes total responsibility in authenticating
+an authorized user.
 
-Because it is implemented as a SessionProvider in MediaWikis AuthManager stack,
-which was introduced with MediaWiki 1.27, you need a version of Auth_remoteuser
-below 2.0.0 to use this extension in MediaWiki 1.26 and below.
+Because it is implemented as a SessionProvider in MediaWikis AuthManager
+stack, which was introduced with MediaWiki 1.27, you need a version of
+Auth_remoteuser below 2.0.0 to use this extension in MediaWiki 1.26 and
+below.
 
 
 Requirements
@@ -23,16 +25,17 @@ Requirements
 Installation
 ------------
 
-Copy this extension directory `Auth_remoteuser/` into your mediawiki extension
-folder `extensions/`. Then add the following line to your global configuration
-file `LocalSettings.php`:
+Copy this extension directory `Auth_remoteuser/` into your mediawiki
+extension folder `extensions/`. Then add the following line to your
+global configuration file `LocalSettings.php`:
 
     wfLoadExtension( 'Auth_remoteuser' );
 
-Take account of the global permissions for account creation. At least one of
-them must be `true` for anonymous users to led this extension create accounts
-for users as of yet unknown to the wiki database. (If you set this to `false`,
-then automatic login works only for users who have a wiki account already.):
+Take account of the global permissions for account creation. At least
+one of them must be `true` for anonymous users to led this extension
+create accounts for users as of yet unknown to the wiki database. If
+you set this to `false`, then automatic login works only for users who
+have a wiki account already.:
 
     $wgGroupPermission['*']['createaccount'] = true;
 
@@ -41,7 +44,7 @@ then automatic login works only for users who have a wiki account already.):
     $wgGroupPermission['*']['createaccount'] = false;
     $wgGroupPermission['*']['autocreateaccount'] = true;
 
-    // Only login a user automatically, who is known to the wiki already.
+    // Only login users automatically if known to the wiki already.
     $wgGroupPermission['*']['createaccount'] = false;
     $wgGroupPermission['*']['autocreateaccount'] = false;
 
@@ -49,18 +52,20 @@ then automatic login works only for users who have a wiki account already.):
 Configuration
 -------------
 
-You can adjust the behaviour of the extension to suit your needs by using a
-set of global configuration variables all starting with `$wgAuthRemoteuser`.
-Just add them to your `LocalSettings.php`. Default values, which you don't
-have to set explicitly are marked with the `// default` comment.
+You can adjust the behaviour of the extension to suit your needs by
+using a set of global configuration variables all starting with
+`$wgAuthRemoteuser`. Just add them to your `LocalSettings.php`. Default
+values, which you don't have to set explicitly are marked with the
+`// default` comment.
 
-* Set the name(s) to use for mapping into the local wiki user database. This
-  can either be a simple string, a closure or a mixed array of strings and/or
-  closures. If the value is `null`, the extension defaults to using the
-  environment variables `REMOTE_USER` and `REDIRECT_REMOTE_USER`. The first name
-  name in the given list, which can be used as a valid MediaWiki user name, will
-  be taken for login (either by login to an existing wiki account or by creating
-  first). Examples:
+* Set the name(s) to use for mapping into the local wiki user database.
+  This can either be a simple string, a closure or a mixed array of
+  strings and/or closures. If the value is `null`, the extension
+  defaults to using the environment variables `REMOTE_USER` and
+  `REDIRECT_REMOTE_USER`. The first name name in the given list, which
+  can be used as a valid MediaWiki user name, will be taken for login
+  (either by login to an existing wiki account or by creating first).
+  Examples:
 
         $wgAuthRemoteuserUserName = null; // default
 
@@ -82,7 +87,7 @@ have to set explicitly are marked with the `// default` comment.
 
         // Create a closure instead of providing strings directly.
         $wgAuthRemoteuserUserName = function() {
-            $credentials = explode( ':', $_SERVER[ 'HTTP_AUTHORIZATION' ] );
+            $credentials = explode( ':',$_SERVER['HTTP_AUTHORIZATION']);
             $username = $credentials[0];
             $password = $credentials[1];
             return MyOwnAuthorizer::authenticate( $username, $password )
@@ -128,7 +133,7 @@ have to set explicitly are marked with the `// default` comment.
             'janedoe',
             '/john/i', // matches all case-insensitive versions of john
             '^f_'      // matches all users starting wit 'f_'
-	];
+        ];
 
 * The opposite of the `UserNameBlacklistFilter` can be achieved by using
   the following filter, which permits the automatic login instead of
@@ -137,22 +142,27 @@ have to set explicitly are marked with the `// default` comment.
         $wgAuthRemoteuserUserNameWhitelistFilter = null; // default
 
         $wgAuthRemoteuserUserNameWhitelistFilter = [
-		'john',
-		'jane'
-	];
+            'john',
+            'jane'
+        ];
 
-* When you have further user information available in your environment, which
-  can be tied to a created user, for example email address or real name, then
-  use the following configuration variable. It expects an array of key value
-  pairs of which 'realname' and 'email' corresponds to the new users real name
-  and email address, while you can specify further key value pairs to get them
-  mapped to user preferences of the same name:
+* When you have further user information available in your environment,
+  which can be tied to a created user, for example email address or real
+  name, then use one of the following configuration variables. Either
+  `UserPrefs` or `UserPrefsForced`, which applying them to new users
+  only or force them by applying them on each request. This can be
+  useful if you don't want the user to change this preference inside
+  MediaWiki (for example your companies email address given by a remote
+  source). They are expecting an array of key value pairs of which
+  'realname' and 'email' corresponds to the new users real name and
+  email address, while any further key value pair specified gets mapped
+  to a user preference of the same name:
 
-        $wgAuthRemoteuserUserPrefs = null; // default
+        $wgAuthRemoteuserUserPrefs = null;       // default
+        $wgAuthRemoteuserUserPrefsForced = null; // default
 
         $wgAuthRemoteuserUserPrefs = [
             'realname' => $_SERVER[ 'AUTHENTICATE_DISPLAYNAME' ],
-            'email' => $_SERVER[ 'AUTHENTICATE_MAIL' ],
             'language' => 'en',
             'disablemail' => 0,
             'ccmeonemails' => 1,
@@ -160,19 +170,23 @@ have to set explicitly are marked with the `// default` comment.
             'enotifusertalkpages' => 1,
             'enotifminoredits' => 1
         ];
+        // Users email address should not be changed inside MediaWiki.
+        $wgAuthRemoteuserUserPrefsForced = [
+            'email' => $_SERVER[ 'AUTHENTICATE_MAIL' ]
+        ];
 
-  You can specify an anonymous function for the values too. These closures
-  getting called when the actual value is needed, and not when it is declared
-  inside your `LocalSettings.php`. The first parameter given to the function
-  is an associative array with the following keys:
+  You can specify an anonymous function for the values too. These
+  closures getting called when the actual value is needed, and not when
+  it is declared inside your `LocalSettings.php`. The first parameter
+  given to the function is an associative array with the following keys:
   * `userId` - id of user in local wiki database or 0 if new/anonymous
   * `remoteUserName` - value as given by the environment
-  * `filteredUserName` - after running `AuthRemoteuserFilterUserName` hook
+  * `filteredUserName` - after running hook for filtering user names
   * `canonicalUserName` - representation in the local wiki database
   * `canonicalUserNameUsed` - the user name used for the current session
 
-  Take the following as an example in which a shellscript is getting executed
-  only when a user is created and not on every page reload:
+  Take the following as an example in which a shellscript is getting
+  executed only when a user is created and not on every page reload:
 
         $wgAuthRemoteuserUserPrefs = [
             'email' => function( $data ) {
@@ -181,45 +195,27 @@ have to set explicitly are marked with the `// default` comment.
             }
         ]
 
-* You can set user preferences for new users only or force their setting on
-  each request. For example if your users email is specified by an external
-  source and you don't want the user to change this email inside MediaWiki,
-  then use the following configuration variable instead. (You can use both
-  configuration variables at the same time, if for example the real name can be
-  changed inside MediaWiki, but the email does not):
-
-        $wgAuthRemoteuserUserPrefsForced = null; // default
-
-        // Users email address should not be changed inside MediaWiki.
-        $wgAuthRemoteuserUserPrefsForced = [
-            'email' => $_SERVER[ 'AUTHENTICATE_MAIL' ]
-        ];
-        // But the language can be changed inside MediaWiki.
-        $wgAuthRemoteuserUserPrefs = [
-            'language' => 'en'
-        ];
-
 * By default this extension mimics the behaviour of Auth_remoteuser
-  versions prior 2.0.0, which prohibits using another local user then the
-  one identified by the environment variable. You can change this behaviour
-  with the following configuration:
+  versions prior 2.0.0, which prohibits using another local user then
+  the one identified by the environment variable. You can change this
+  behaviour with the following configuration:
 
         $wgAuthRemoteuserAllowUserSwitch = false; // default
 
         $wgAuthRemoteuserAllowUserSwitch = true;
 
-* As an immutable SessionProvider (see `AllowUserSwitch` config above) all
-  special pages and login/logout links for authentication aren't needed
-  anymore by the identified user. If you still want them to be shown, for
-  example if you are using other session providers besides this one, then
-  set the following accordingly:
+* As an immutable SessionProvider (see `AllowUserSwitch` config above)
+  all special pages and login/logout links for authentication aren't
+  needed anymore by the identified user. If you still want them to be
+  shown, for example if you are using other session providers besides
+  this one, then set the following accordingly:
 
         $wgAuthRemoteuserRemoveAuthPagesAndLinks = true; // default
 
         $wgAuthRemoteuserRemoveAuthPagesAndLinks = false;
 
-* If you are using other SessionProvider extensions besides this one, you
-  have to specify their significance by using an ascending priority:
+* If you are using other SessionProvider extensions besides this one,
+  you have to specify their significance by using an ascending priority:
 
         $wgAuthRemoteuserPriority = 50; // default
 
@@ -229,34 +225,34 @@ have to set explicitly are marked with the `// default` comment.
 Upgrade
 -------
 
-This extension doesn't uses any database entries, therefore you don't need
-that extension to be enabled while upgrading. Just disable it and after
-you have upgraded your wiki, reenable this extension.
+This extension doesn't uses any database entries, therefore you don't
+need that extension to be enabled while upgrading. Just disable it and
+after you have upgraded your wiki, reenable this extension.
 
 
 Upgrading from versions prior 2.0.0
 -----------------------------------
 
 All legacy configuration parameters are still fully supported. You don't
-have to rewrite your old `LocalSettings.php` settings for this extension.
-But to assist you in transitioning of old configuration parameters to new
-ones, the following list can guide you:
+have to rewrite your old `LocalSettings.php` settings. But to assist you
+in transitioning of old configuration parameters to new ones, the
+following list can guide you:
 
 * `$wgAuthRemoteuserAuthz`
   This parameter has no equivalent new parameter, because you can achive
   the same with not loading the extension at all.
-* `$wgAuthRemoteuserName` - Superseded by `$wgRemoteuserUserPrefs`.
-* `$wgAuthRemoteuserMail` - Superseded by `$wgRemoteuserUserPrefs`.
-* `$wgAuthRemoteuserNotify` - Superseded by `$wgRemoteuserUserPrefs`.
-* `$wgAuthRemoteuserDomain` - Superseded by `$wgRemoteuserUserNameReplaceFilter`.
-* `$wgAuthRemoteuserMailDomain` - Superseded by `$wgRemoteuserUserPrefs`.
+* `$wgAuthRemoteuserName` - Use `$wgRemoteuserUserPrefs`!
+* `$wgAuthRemoteuserMail` - Use `$wgRemoteuserUserPrefs`!
+* `$wgAuthRemoteuserNotify` - Use `$wgRemoteuserUserPrefs`!
+* `$wgAuthRemoteuserDomain` - Use `$wgRemoteuserUserNameReplaceFilter`!
+* `$wgAuthRemoteuserMailDomain` - Use `$wgRemoteuserUserPrefs`!
 
 
 Additional notes
 ----------------
 
-For a complete list of authors and any further documentation see the file
-`extension.json` or the `Special:Version` page on your wiki installation
-after you have enabled this extension.
+For a complete list of authors and any further documentation see the
+file `extension.json` or the `Special:Version` page on your wiki
+installation after you have enabled this extension.
 
 For the license see the file `COPYING`.

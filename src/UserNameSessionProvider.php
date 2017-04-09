@@ -76,6 +76,13 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	/**
 	 * User preferences applied in the moment of local account creation only.
 	 *
+	 * The preferences are given as an array of key value pairs. Each key relates
+	 * to an according user preference option of the same name. Closures as values
+	 * getting evaluated and should return the according value. The following keys
+	 * are handled individually:
+	 * * `realname` - Specifies the users real (display) name.
+	 * * `email` - Specifies the users email address.
+	 *
 	 * @var array
 	 * @since 2.0.0
 	 */
@@ -84,6 +91,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	/**
 	 * User preferences applied to the user object on each request.
 	 *
+	 * @see self::$userPrefs
 	 * @var array
 	 * @since 2.0.0
 	 */
@@ -114,13 +122,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	 * * `remoteUserNames` - Either a string/closure or an array of
 	 *   strings/closures listing the given remote user name(s). Each closure
 	 *   should return a string.
-	 * * `userPrefs` - User preferences applied to the identified MediaWiki user
-	 *   given as an array of key value pairs. Each key relates to an according
-	 *   user preference option of the same name. Closures as values getting
-	 *   evaluated and should return the according value. The following keys are
-	 *   handled individually:
-	 *   * `realname` - Specifies the users real (display) name.
-	 *   * `email` - Specifies the users email address.
+	 * * `userPrefs` - @see self::$userPrefs
 	 * * `userPrefsForced` - @see self::$userPrefsForced
 	 * * `switchUser` - @see self::$switchUser
 	 * * `removeAuthPagesAndLinks` - @see self::$removeAuthPagesAndLinks
