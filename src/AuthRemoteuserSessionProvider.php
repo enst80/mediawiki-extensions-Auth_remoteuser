@@ -64,6 +64,7 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 	 * * `$wgAuthRemoteuserUserNameWhitelistFilter`
 	 * * `$wgAuthRemoteuserUserPrefs`
 	 * * `$wgAuthRemoteuserUserPrefsForced`
+	 * * `$wgAuthRemoteuserUserUrls`
 	 * * `$wgAuthRemoteuserAllowUserSwitch`
 	 * * `$wgAuthRemoteuserRemoveAuthPagesAndLinks`
 	 * * `$wgAuthRemoteuserPriority`
@@ -81,6 +82,7 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 			'UserName' => 'remoteUserNames',
 			'UserPrefs' => 'userPrefs',
 			'UserPrefsForced' => 'userPrefsForced',
+			'UserUrls' => 'userUrls',
 			'AllowUserSwitch' => 'switchUser',
 			'RemoveAuthPagesAndLinks' => 'removeAuthPagesAndLinks',
 			'Priority' => 'priority'
@@ -120,6 +122,18 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 			$params[ 'remoteUserNames' ] = [
 				getenv( 'REMOTE_USER' ),
 				getenv( 'REDIRECT_REMOTE_USER' )
+			];
+		}
+
+		# Set default logout url if none given and user switching is allowed.
+		# Default url should redirect to `Special::UserLogin` instead of
+		# `Special::UserLogout`, because a simple logout is something we want
+		# to avert while using this extension.
+		if ( !isset( $params[ 'userUrls' ] ) &&	isset( $params[ 'switchUser' ] ) && $params[ 'switchUser' ] ) {
+			$params[ 'userUrls' ] = [
+				'logout' => function( $metadata, &$personalurls, &$title, $skin ) {
+					return $skin->makeSpecialUrl( 'UserLogin' );
+				}
 			];
 		}
 

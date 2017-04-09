@@ -195,6 +195,42 @@ values, which you don't have to set explicitly are marked with the
             }
         ]
 
+* You can replace urls in MediaWiki, if your remote source is better
+  suited for handling specific behaviour. For example be default no
+  automatically logged-in user is allowed to logout (because he will be
+  loggin-in automatically again with the next request). But maybe your
+  remote source should handle that logout (so that with the next request
+  there isn't a remote user name provided anymore to this extension). So
+  setup an according logout url to the following key value array, which
+  evaluates the following key(s):
+  * `logout` - Provide a different url for the logout button in the
+    personals url bar. Accepts a string or a closure, which receives
+    the following parameters:
+    * `$metadata` - same as first parameter for `UserPrefs` closures
+    * `&$personalurls` - array of link objects in personal urls bar
+    * `&$title` - title of current page
+    * `$skin` - current skin
+  Examples:
+
+        $wgAuthRemoteuserUserUrls = null; // default
+
+        // Redirect to companies domain controller host for logout.
+        $wgAuthRemoteuserUserUrls = [
+            'logout' => function( $metadata ) {
+                $user = $metadata[ 'remoteUserName' ];
+                return 'https://company.example.com/?logout=' . $user;
+            }
+        ];
+
+        // Redirect to user login page instead of default logout page.
+        // This is the default behaviour if user switching is allowed.
+        $wgAuthRemoteuserUserUrls = [
+            'logout' => function( $m, &$p, &$t, $skin ) {
+                return $skin->makeSpecialUrl( 'UserLogin' );
+            }
+        ];
+
+
 * By default this extension mimics the behaviour of Auth_remoteuser
   versions prior 2.0.0, which prohibits using another local user then
   the one identified by the environment variable. You can change this

@@ -12,6 +12,7 @@
 		"UserNameWhitelistFilter": null,
 		"UserPrefs": null,
 		"UserPrefsForced": null,
+		"UserUrls": null,
 		"AllowUserSwitch": false,
 		"RemoveAuthPagesAndLinks": true,
 		"Priority": 50

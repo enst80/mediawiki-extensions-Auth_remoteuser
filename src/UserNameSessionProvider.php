@@ -98,6 +98,16 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	protected $userPrefsForced;
 
 	/**
+	 * Urls in links which differ from the default ones. The following keys are
+	 * supported in this associative array:
+	 * * 'logout' - Change the logout url to this value.
+	 *
+	 * @var array
+	 * @since 2.0.0
+	 */
+	protected $userUrls;
+
+	/**
 	 * Indicates if the automatically logged-in user can switch to another local
 	 * MediaWiki account while still beeing identified by the remote user name.
 	 *
@@ -124,6 +134,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	 *   should return a string.
 	 * * `userPrefs` - @see self::$userPrefs
 	 * * `userPrefsForced` - @see self::$userPrefsForced
+	 * * `userUrls` - @see self::$userUrls
 	 * * `switchUser` - @see self::$switchUser
 	 * * `removeAuthPagesAndLinks` - @see self::$removeAuthPagesAndLinks
 	 *
@@ -136,6 +147,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			'remoteUserNames' => [],
 			'userPrefs' => null,
 			'userPrefsForced' => null,
+			'userUrls' => null,
 			'switchUser' => false,
 			'removeAuthPagesAndLinks' => true
 		];
@@ -162,6 +174,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 						break;
 					case 'userPrefs':
 					case 'userPrefsForced':
+					case 'userUrls':
 						if ( is_array( $params[ $key ] ) ) {
 							$value = $params[ $key ];
 						}
@@ -382,7 +395,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 		);
 
 		$disableSpecialPages = [];
-		$disablePersonalUrls = [ 'logout' ];
+		$disablePersonalUrls = [];
 		$preferences = ( $this->userPrefsForced ) ? [] + $this->userPrefsForced : [];
 
 		# Disable any special pages related to user switching.
@@ -407,6 +420,33 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			$disableSpecialPages += [ 'ChangePassword', 'PasswordReset' ];
 			global $wgHiddenPrefs;
 			$wgHiddenPrefs[] = 'password';
+		}
+
+		# Replace logout url in personal urls bar with provided one or remove logout
+		# button completely, if no url given and current sessions user name is equal
+		# to the remote user name.
+		if ( $this->userUrls && isset( $this->userUrls[ 'logout' ] ) ) {
+			$url = $this->userUrls[ 'logout' ];
+			Hooks::register(
+				'PersonalUrls',
+				function ( &$personalurls, &$title, $skin ) use ( $url, $metadata ) {
+					if ( $url instanceof Closure ) {
+						$url = call_user_func_array(
+							$url, [
+								$metadata,
+								&$personalurls,
+								&$title,
+								$skin
+							]
+						);
+					}
+					if ( $url && is_string( $url ) && !empty( $url ) && isset( $personalurls[ 'logout' ] ) ) {
+						$personalurls[ 'logout' ][ 'href' ] = $url;
+					}
+				}
+			);
+		} elseif ( !$switchedUser ) {
+			$disablePersonalUrls[] = 'logout';
 		}
 
 		# Set user preferences on account creation only.
@@ -503,7 +543,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 
 		Hooks::register(
 			'PersonalUrls',
-			function ( &$personalurls, &$title ) use ( $disablePersonalUrls ) {
+			function ( &$personalurls ) use ( $disablePersonalUrls ) {
 				foreach ( $disablePersonalUrls as $url ) {
 					unset( $personalurls[ $url ] );
 				}
