@@ -396,7 +396,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 
 		$disableSpecialPages = [];
 		$disablePersonalUrls = [];
-		$preferences = ( $this->userPrefsForced ) ? [] + $this->userPrefsForced : [];
+		$preferences = ( $this->userPrefsForced ) ? $this->userPrefsForced : [];
 
 		# Disable any special pages related to user switching.
 		if ( !$this->switchUser ) {
@@ -451,7 +451,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 
 		# Set user preferences on account creation only.
 		if ( !$info->getUserInfo()->getId() ) {
-			$prefs = [] + $preferences;
+			$prefs = $preferences;
 			if ( $this->userPrefs ) {
 				$prefs += $this->userPrefs;
 			}
