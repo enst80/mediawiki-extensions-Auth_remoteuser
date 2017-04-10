@@ -33,14 +33,14 @@ global configuration file `LocalSettings.php`:
 
 Take account of MediaWikis global permissions for account creation
 inside your `LocalSettings.php`. At least one of them must be `true` for
-anonymous users to led this extension create accounts for users as of
+anonymous users to let this extension create accounts for users as of
 yet unknown to the wiki database. If you set this to `false`, then
-automatic login works only for users who have a wiki account already.:
+automatic login works only for users who have a wiki account already:
 
     $wgGroupPermissions['*']['createaccount'] = true;
 
     // If account creation by anonymous users is forbidden, then allow
-    // it at least for beeing created automatically.
+    // it to be created automatically.
     $wgGroupPermissions['*']['createaccount'] = false;
     $wgGroupPermissions['*']['autocreateaccount'] = true;
 
@@ -81,7 +81,7 @@ values, which you don't have to set explicitly are marked with the
         $wgAuthRemoteuserUserName = ""; // Will evaluate to nothing.
         $wgAuthRemoteuserUserName = []; // Will evaluate to nothing.
 
-        // This is not adviced, because it will evaluate every visitor
+        // This is not advised, because it will evaluate every visitor
         // to the same wiki user 'Everybody'.
         $wgAuthRemoteuserUserName = "Everybody";
 
@@ -149,14 +149,14 @@ values, which you don't have to set explicitly are marked with the
 * When you have further user information available in your environment,
   which can be tied to a created user, for example email address or real
   name, then use one of the following configuration variables. Either
-  `UserPrefs` or `UserPrefsForced`, which applying them to new users
-  only or force them by applying them on each request. This can be
-  useful if you don't want the user to change this preference inside
-  MediaWiki (for example your companies email address given by a remote
-  source). They are expecting an array of key value pairs of which
-  'realname' and 'email' corresponds to the new users real name and
-  email address, while any further key value pair specified gets mapped
-  to a user preference of the same name:
+  `UserPrefs` or `UserPrefsForced`, which applies them to new users only
+  or force them by applying them on each request. This can be useful if
+  you don't want the user to change this preference inside MediaWiki
+  (for example your company email address given by a remote source).
+  They are expecting an array of key value pairs of which 'realname' and
+  'email' corresponds to the new users real name and email address,
+  while any further key value pair specified gets mapped to a user
+  preference of the same name:
 
         $wgAuthRemoteuserUserPrefs = null;       // default
         $wgAuthRemoteuserUserPrefsForced = null; // default
@@ -201,7 +201,7 @@ values, which you don't have to set explicitly are marked with the
   logged-in automatically again with the next request). But maybe your
   remote source should handle that logout (so that with the next request
   there isn't a remote user name provided anymore to this extension). So
-  setup an according logout url to the following key value array, which
+  setup an appropriate logout url to the following key value array, which
   evaluates the following key(s):
   * `logout` - Provide a different url for the logout button in the
     personals url bar. Accepts a string or a closure, which receives
@@ -215,7 +215,7 @@ values, which you don't have to set explicitly are marked with the
 
         $wgAuthRemoteuserUserUrls = null; // default
 
-        // Redirect to companies domain controller host for logout.
+        // Redirect to company domain controller host for logout.
         $wgAuthRemoteuserUserUrls = [
             'logout' => function( $metadata ) {
                 $user = $metadata[ 'remoteUserName' ];
@@ -262,7 +262,7 @@ values, which you don't have to set explicitly are marked with the
 Upgrade
 -------
 
-This extension doesn't uses any database entries, therefore you don't
+This extension doesn't use any database entries, therefore you don't
 need that extension to be enabled while upgrading. Just disable it and
 after you have upgraded your wiki, reenable this extension.
 
