@@ -129,7 +129,7 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 		# Default url should redirect to `Special::UserLogin` instead of
 		# `Special::UserLogout`, because a simple logout is something we want
 		# to avert while using this extension.
-		if ( !isset( $params[ 'userUrls' ] ) &&	isset( $params[ 'switchUser' ] ) && $params[ 'switchUser' ] ) {
+		if ( !isset( $params[ 'userUrls' ] ) && isset( $params[ 'switchUser' ] ) && $params[ 'switchUser' ] ) {
 			$params[ 'userUrls' ] = [
 				'logout' => function( $metadata, &$personalurls, &$title, $skin ) {
 					return $skin->makeSpecialUrl( 'UserLogin' );
