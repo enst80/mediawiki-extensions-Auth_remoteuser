@@ -234,8 +234,8 @@ values, which you don't have to set explicitly are marked with the
 
 * By default this extension mimics the behaviour of Auth_remoteuser
   versions prior 2.0.0, which prohibits using another local user then
-  the one identified by the environment variable. You can change this
-  behaviour with the following configuration:
+  the one identified by the remote source. You can change this behaviour
+  with the following configuration:
 
         $wgAuthRemoteuserAllowUserSwitch = false; // default
 
