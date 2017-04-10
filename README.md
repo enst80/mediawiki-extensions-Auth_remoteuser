@@ -31,11 +31,11 @@ global configuration file `LocalSettings.php`:
 
     wfLoadExtension( 'Auth_remoteuser' );
 
-Take account of the global permissions for account creation. At least
-one of them must be `true` for anonymous users to led this extension
-create accounts for users as of yet unknown to the wiki database. If
-you set this to `false`, then automatic login works only for users who
-have a wiki account already.:
+Take account of MediaWikis global permissions for account creation
+inside your `LocalSettings.php`. At least one of them must be `true` for
+anonymous users to led this extension create accounts for users as of
+yet unknown to the wiki database. If you set this to `false`, then
+automatic login works only for users who have a wiki account already.:
 
     $wgGroupPermissions['*']['createaccount'] = true;
 
