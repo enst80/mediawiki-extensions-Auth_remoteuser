@@ -106,8 +106,9 @@ values, which you don't have to set explicitly are marked with the
 
 * This extension comes with predefined remote user name filters (which
   are using the hook mentioned above). If you want to replace something,
-  set an array of replacement patterns to the following configuration
-  variable (Each search pattern can be in PCRE syntax too):
+  set an array of search and replacement patterns to the following
+  configuration variable (Each pattern can be a regular expression in
+  PCRE syntax too):
 
         $wgAuthRemoteuserUserNameReplaceFilter = null; // default
 
@@ -118,8 +119,11 @@ values, which you don't have to set explicitly are marked with the
                                          // from back
             '^domain\\' => '',           // strip NTLM domain from front
             'johndoe' => 'Admin',        // rewrite user johndoe
-            '/JaNeDoE/i' => 'Admin'      // rewrite all case-insensitive
+            '/JaNeDoE/i' => 'Admin',     // rewrite all case-insensitive
                                          // versions of janedoe
+            '^(.*)$' => 'auto_$1',       // prepend string 'auto_'
+            '^cn=(.*),dc=com$' => '$1',  // get nested user name
+            '^([^,]*),(.*)$' => '$2 $1'  // reorder names
         ];
 
 * If you want to prevent some names from beeing logged in automatically,
