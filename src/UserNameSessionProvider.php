@@ -478,29 +478,31 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			if ( $this->canChangeUser() ) {
 				Hooks::register(
 					'UserLogout',
-					function() use ( $url, $metadata ) {
+					function() use ( $url, $metadata, $switchedUser ) {
 						if ( $url instanceof Closure ) {
 							$url = call_user_func( $url, $metadata );
 						}
 						$internal = Title::newFromText( $url );
-						if ( $internal->isKnown() ) {
+						$known = $internal->isKnown();
+						if ( $known ) {
 							$url = $internal->getFullURL();
+						}
+						if ( $known && !$switchedUser ) {
 							# Inhibit redirect loop.
 							if ( !preg_match( '#[/=]Special:UserLogout([/?&].*)?$#', $url ) ) {
 								global $wgOut;
 								$wgOut->redirect( $url );
 							}
 							return false;
-						} else {
-							Hooks::register(
-								'UserLogoutComplete',
-								function() use ( $url ) {
-									global $wgOut;
-									$wgOut->redirect( $url );
-									return true;
-								}
-							);
 						}
+						Hooks::register(
+							'UserLogoutComplete',
+							function() use ( $url ) {
+								global $wgOut;
+								$wgOut->redirect( $url );
+								return true;
+							}
+						);
 						return true;
 					}
 				);
