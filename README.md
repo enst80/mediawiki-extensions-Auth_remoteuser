@@ -221,16 +221,17 @@ values, which you don't have to set explicitly are marked with the
   automatically logged-in user is allowed to logout (because he will be
   logged-in automatically again with the next request). But maybe your
   remote source should handle that logout (so that with the next request
-  there isn't a remote user name provided anymore to this extension). So
-  setup an appropriate logout url to the following key value array, which
-  evaluates the following key(s):
-  * `logout` - Provide a different url for the logout button in the
-    personals url bar. Accepts a string or a closure, which receives
-    the following parameters:
-    * `$metadata` - same as first parameter for `UserPrefs` closures
-    * `&$personalurls` - array of link objects in personal urls bar
-    * `&$title` - title of current page
-    * `$skin` - current skin
+  there isn't a remote user name provided anymore to this extension).
+  Set an appropriate url to one of the following keys of the associative
+  array `wgAuthRemoteuserUserUrls`:
+  * `logout` - Provide a redirect url for the user logout. Depending on
+    your other extension configuration settings this will either replace
+    the link of the logout button in the users personals url bar or
+    redirect after a call to the special page `Special:UserLogout`.
+    Accepts a string or a closure. If of type closure, then it should
+    return a string with a valid url (either external or internal). The
+    closure gets as first parameter the same array as closures for the
+    user preferences (see description there).
 
   Examples:
 
@@ -247,8 +248,8 @@ values, which you don't have to set explicitly are marked with the
         // Redirect to user login page instead of default logout page.
         // This is the default behaviour if user switching is allowed.
         $wgAuthRemoteuserUserUrls = [
-            'logout' => function( $m, &$p, &$t, $skin ) {
-                return $skin->makeSpecialUrl( 'UserLogin' );
+            'logout' => function( $metadata ) {
+                return 'Special:UserLogin';
             }
         ];
 

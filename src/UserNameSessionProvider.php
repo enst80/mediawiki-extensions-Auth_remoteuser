@@ -36,6 +36,7 @@ use Hooks;
 use Sanitizer;
 use User;
 use Closure;
+use Title;
 
 /**
  * MediaWiki session provider for arbitrary user name sources.
@@ -101,7 +102,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	/**
 	 * Urls in links which differ from the default ones. The following keys are
 	 * supported in this associative array:
-	 * * 'logout' - Change the logout url to this value.
+	 * * 'logout' - Redirect to this url on logout.
 	 *
 	 * @var array
 	 * @since 2.0.0
@@ -460,29 +461,65 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			$wgHiddenPrefs[] = 'password';
 		}
 
-		# Replace logout url in personal urls bar with provided one or remove logout
-		# button completely, if no url given and current sessions user name is equal
-		# to the remote user name.
+		# Redirect to given remote logout url. Either by redirect after a normal
+		# logout request to Special:UserLogout or by replacing the url in the logout
+		# button when user switching is not allowed and therefore the special page for
+		# logout is not accessible.
+		#
+		# When the special page UserLogout is accessible, then we have to distinguish
+		# between internal and external redirects. For internal redirects we have to
+		# use the `UserLogout` hook to redirect before the local session/cookie will
+		# be deleted. Because with this session provider in place we would login the
+		# user with the next request again anyway (so no need to destroy the session).
+		# For external redirects we must let delete the local session/cookie first,
+		# therefore we use the `UserLogoutComplete` hook for these type of urls.
 		if ( $this->userUrls && isset( $this->userUrls[ 'logout' ] ) ) {
 			$url = $this->userUrls[ 'logout' ];
-			Hooks::register(
-				'PersonalUrls',
-				function ( &$personalurls, &$title, $skin ) use ( $url, $metadata ) {
-					if ( $url instanceof Closure ) {
-						$url = call_user_func_array(
-							$url, [
-								$metadata,
-								&$personalurls,
-								&$title,
-								$skin
-							]
-						);
+			if ( $this->canChangeUser() ) {
+				Hooks::register(
+					'UserLogout',
+					function() use ( $url, $metadata ) {
+						if ( $url instanceof Closure ) {
+							$url = call_user_func( $url, $metadata );
+						}
+						$internal = Title::newFromText( $url );
+						if ( $internal->isKnown() ) {
+							$url = $internal->getFullURL();
+							# Inhibit redirect loop.
+							if ( !preg_match( '#[/=]Special:UserLogout([/?&].*)?$#', $url ) ) {
+								global $wgOut;
+								$wgOut->redirect( $url );
+							}
+							return false;
+						} else {
+							Hooks::register(
+								'UserLogoutComplete',
+								function() use ( $url ) {
+									global $wgOut;
+									$wgOut->redirect( $url );
+									return true;
+								}
+							);
+						}
+						return true;
 					}
-					if ( $url && is_string( $url ) && !empty( $url ) && isset( $personalurls[ 'logout' ] ) ) {
+				);
+			} else {
+				Hooks::register(
+					'PersonalUrls',
+					function( &$personalurls ) use ( $url, $metadata ) {
+						if ( $url instanceof Closure ) {
+							$url = call_user_func( $url, $metadata );
+						}
+						$internal = Title::newFromText( $url );
+						if ( $internal->isKnown() ) {
+							$url = $internal->getLinkURL();
+						}
 						$personalurls[ 'logout' ][ 'href' ] = $url;
+						return true;
 					}
-				}
-			);
+				);
+			}
 		} elseif ( !$switchedUser ) {
 			$disablePersonalUrls[] = 'logout';
 		}
