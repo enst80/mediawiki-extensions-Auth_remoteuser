@@ -158,9 +158,12 @@ values, which you don't have to set explicitly are marked with the
   you don't want the user to change this preference inside MediaWiki
   (for example your company email address given by a remote source).
   They are expecting an array of key value pairs of which 'realname' and
-  'email' corresponds to the new users real name and email address,
-  while any further key value pair specified gets mapped to a user
-  preference of the same name:
+  'email' corresponds to the new users real name and email address. Any
+  further key value pair specified gets mapped to a user preference of
+  the same name. But take note of MediaWikis `$wgDefaultUserOptions` and
+  `$wgHiddenPrefs`for declaring user preference options. In most cases
+  these globals are better suited for a definition of a default value
+  and disabling their modifiability:
 
         $wgAuthRemoteuserUserPrefs = null;       // default
         $wgAuthRemoteuserUserPrefsForced = null; // default
@@ -168,15 +171,27 @@ values, which you don't have to set explicitly are marked with the
         $wgAuthRemoteuserUserPrefs = [
             'realname' => $_SERVER[ 'AUTHENTICATE_DISPLAYNAME' ],
             'language' => 'en',
-            'disablemail' => 0,
-            'ccmeonemails' => 1,
-            'enotifwatchlistpages' => 1,
-            'enotifusertalkpages' => 1,
-            'enotifminoredits' => 1
+            'disablemail' => 0
         ];
         // Users email address should not be changed inside MediaWiki.
         $wgAuthRemoteuserUserPrefsForced = [
             'email' => $_SERVER[ 'AUTHENTICATE_MAIL' ]
+        ];
+
+        // Instead use MediaWiki global for the preference option.
+        $wgDefaultUserOptions[ 'disablemail' ] = 0;
+        // And disable it from beeing changed by the user.
+        $wgHiddenPrefs[] = 'disablemail';
+        // But change it depending on type of remote user (uses the
+        // closure feature described below). For example if there are
+        // guest accounts identified by a leading 'g_' existing at your
+        // remote source, which have no valid email address, then
+        // disable the option specifically for these type of accounts.
+        $wgAuthRemoteuserUserPrefsForced = [
+            'disablemail' => function ( $metadata ) {
+                $name = $metadata[ 'remoteUserName' ];
+                return ( preg_match( '/^g_/', $name ) ) ? 1 : 0;
+            };
         ];
 
   You can specify an anonymous function for the values too. These
