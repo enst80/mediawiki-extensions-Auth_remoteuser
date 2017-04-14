@@ -204,13 +204,15 @@ values, which you don't have to set explicitly are marked with the
   * `canonicalUserName` - representation in the local wiki database
   * `canonicalUserNameUsed` - the user name used for the current session
 
-  Take the following as an example in which a shellscript is getting
-  executed only when a user is created and not on every page reload:
-
+  Take the following as an example in which a cost-intensive function
+  (in a timely manner) is getting executed only once per user and not on
+  every request:
+ 
         $wgAuthRemoteuserUserPrefs = [
-            'email' => function( $data ) {
-                $name = $data[ 'remoteUserName' ];
-                return shell_exec( "/usr/bin/get_mail.sh '$name'" );
+            'email' => function( $metadata ) use ( $rpc ) {
+                $name = $metadata[ 'remoteUserName' ];
+                // costly remote procedure call to get email address
+                return $rpc->query( 'email', $name );
             }
         ]
 
