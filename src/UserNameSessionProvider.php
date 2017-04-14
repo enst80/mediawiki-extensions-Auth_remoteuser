@@ -27,6 +27,7 @@
 namespace MediaWiki\Extensions\Auth_remoteuser;
 
 use MediaWiki\Session\CookieSessionProvider;
+use MediaWiki\Session\SessionBackend;
 use MediaWiki\Session\SessionManager;
 use MediaWiki\Session\SessionInfo;
 use MediaWiki\Session\UserInfo;
@@ -123,6 +124,17 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	 * @since 2.0.0
 	 */
 	protected $removeAuthPagesAndLinks;
+
+	/**
+	 * A token unique to the remote source session.
+	 *
+	 * This must persist requests and if it changes, it indicates a change in the
+	 * remote session.
+	 *
+	 * @var string
+	 * @since 2.0.0
+	 */
+	protected $remoteToken;
 
 	/**
 	 * The constructor processes the class configuration.
@@ -311,8 +323,34 @@ class UserNameSessionProvider extends CookieSessionProvider {
 				$permissions = $anon->getGroupPermissions( $anon->getEffectiveGroups() );
 				if ( in_array( 'autocreateaccount', $permissions, true ) ||
 					in_array( 'createaccount', $permissions, true ) ) {
-					$this->logger->warning("Renew session due to global permission change " .
-						"in (auto) creating new users.");
+					$this->logger->warning(
+						"Renew session due to global permission change " .
+						"in (auto) creating new users."
+					);
+					$sessionInfo = null;
+				}
+			}
+
+			# If our parent provides a session info, it could be from an old request
+			# where the old remote user name doesn't match the one used for the current
+			# request. This happens, when the client switched the user remotely (because
+			# he has access to two different accounts at the remote source). Therefore
+			# we have to mark the local authentication part (the cookie, because we
+			# inherit from `CookieSessionProvider`) and compare it against the current
+			# request. We use the `filteredUserName` instead of `remoteuserName` for the
+			# comparison, because the wiki admin could have mapped two differing remote
+			# user names to the same local username with an according filter. For the
+			# marking itself we have to overwrite some inherited methods.
+			#
+			# @see self::getCookieDataToExport()
+			# @see self::persistSession()
+			if ( $sessionInfo ) {
+				$prefix = $this->cookieOptions[ 'prefix' ];
+				$old = $this->getCookie( $request, 'RemoteToken', $prefix );
+				if ( $old !== $filteredUserName ) {
+					$this->logger->warning(
+						"Renew local session due to remote session change."
+					);
 					$sessionInfo = null;
 				}
 			}
@@ -569,6 +607,27 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	 */
 	public function canChangeUser() {
 		return ( $this->switchUser ) ? parent::canChangeUser() : false;
+	}
+
+	/**
+	 * Mark the cookie with current remote token.
+	 *
+	 * @since 2.0.0
+	 */
+	protected function cookieDataToExport( $user, $remember ) {
+		return [ 'RemoteToken' => $this->remoteToken ] +
+			parent::cookieDataToExport( $user, $remember );
+	}
+
+	/**
+	 * Specify remote token.
+	 *
+	 * @since 2.0.0
+	 */
+	public function persistSession( SessionBackend $session, WebRequest $request ) {
+		$metadata = $session->getProviderMetadata();
+		$this->remoteToken = $metadata[ 'filteredUserName' ];
+		return parent::persistSession( $session, $request );
 	}
 
 	/**
