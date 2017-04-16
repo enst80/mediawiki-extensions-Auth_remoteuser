@@ -180,7 +180,7 @@ values, which you don't have to set explicitly are marked with the
 
         // Instead use MediaWiki global for the preference option.
         $wgDefaultUserOptions[ 'disablemail' ] = 0;
-        // And disable it from beeing changed by the user.
+        // And disable it from being changed by the user.
         $wgHiddenPrefs[] = 'disablemail';
         // But change it depending on type of remote user (uses the
         // closure feature described below). For example if there are
@@ -191,7 +191,7 @@ values, which you don't have to set explicitly are marked with the
             'disablemail' => function ( $metadata ) {
                 $name = $metadata[ 'remoteUserName' ];
                 return ( preg_match( '/^g_/', $name ) ) ? 1 : 0;
-            };
+            }
         ];
 
   You can specify an anonymous function for the values too. These
@@ -207,14 +207,14 @@ values, which you don't have to set explicitly are marked with the
   Take the following as an example in which a cost-intensive function
   (in a timely manner) is getting executed only once per user and not on
   every request:
- 
+
         $wgAuthRemoteuserUserPrefs = [
             'email' => function( $metadata ) use ( $rpc ) {
                 $name = $metadata[ 'remoteUserName' ];
                 // costly remote procedure call to get email address
                 return $rpc->query( 'email', $name );
             }
-        ]
+        ];
 
 * You can replace urls in MediaWiki, if your remote source is better
   suited for handling specific behaviour. For example by default no
@@ -226,7 +226,7 @@ values, which you don't have to set explicitly are marked with the
   array `wgAuthRemoteuserUserUrls`:
   * `logout` - Provide a redirect url for the user logout. Depending on
     your other extension configuration settings this will either replace
-    the link of the logout button in the users personals url bar or
+    the link of the logout button in the user's personal url bar or
     redirect after a call to the special page `Special:UserLogout`.
     Accepts a string or a closure. If of type closure, then it should
     return a string with a valid url (either external or internal). The

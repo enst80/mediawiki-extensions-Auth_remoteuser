@@ -334,7 +334,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 
 			# If our parent provides a session info, it could be from an old request
 			# where the old remote user name doesn't match the one used for the current
-			# request. This happens, when the client switched the user remotely (because
+			# request. This happens when the client switched the user remotely (because
 			# he has access to two different accounts at the remote source). Therefore
 			# we have to mark the local authentication part (the cookie, because we
 			# inherit from `CookieSessionProvider`) and compare it against the current
@@ -471,7 +471,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 		# use the `UserLogout` hook to redirect before the local session/cookie will
 		# be deleted. Because with this session provider in place we would login the
 		# user with the next request again anyway (so no need to destroy the session).
-		# For external redirects we must let delete the local session/cookie first,
+		# For external redirects we must delete the local session/cookie first,
 		# therefore we use the `UserLogoutComplete` hook for these type of urls.
 		if ( $this->userUrls && isset( $this->userUrls[ 'logout' ] ) ) {
 			$url = $this->userUrls[ 'logout' ];

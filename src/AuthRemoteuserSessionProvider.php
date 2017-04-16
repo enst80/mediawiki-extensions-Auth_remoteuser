@@ -129,12 +129,8 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 		# allowed. Redirect to login page because with this extension in place there
 		# wouldn't be a real logout when the client gets logged-in again with the
 		# next request.
-		if ( ( !isset( $params[ 'userUrls' ] ) ||
-			( is_array( $params[ 'userUrls' ] ) &&
-			!isset( $params[ 'userUrls' ][ 'logout' ] ) ) ) &&
-			isset( $params[ 'switchUser' ] ) &&
-			$params[ 'switchUser' ] ) {
-			if ( !isset( $params[ 'userUrls' ] ) ) {
+		if ( !empty( $params[ 'switchUser' ] ) ) {
+			if ( !isset( $params[ 'userUrls' ] ) ||	!is_array( $params[ 'userUrls' ] ) ) {
 				$params[ 'userUrls' ] = [];
 			}
 			$params[ 'userUrls' ] += [ 'logout' => 'Special:UserLogin' ]; 
