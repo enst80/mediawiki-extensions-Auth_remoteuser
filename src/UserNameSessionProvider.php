@@ -54,7 +54,7 @@ use Title;
  * only.
  *
  * @see CookieSessionProvider::provideSessionInfo()
- * @version 2.0.0
+ * @version 2.0.1
  * @since 2.0.0
  */
 class UserNameSessionProvider extends CookieSessionProvider {
@@ -136,6 +136,15 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	 * @since 2.0.0
 	 */
 	protected $remoteToken;
+
+	/**
+	 * Determines whether to run the `UserLoggedIn` hook after a session has
+	 * been created.
+	 *
+	 * @var boolean
+	 * @since 2.0.1
+	 */
+	protected $callUserLoggedInHook = false;
 
 	/**
 	 * The constructor processes the class configuration.
@@ -365,6 +374,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 					'userInfo' => $userInfo
 					]
 				);
+				$this->callUserLoggedInHook = true;
 			}
 
 			# The current session identifies an anonymous user, therefore we have to
@@ -378,6 +388,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 					'forceUse' => true
 					]
 				);
+				$this->callUserLoggedInHook = true;
 			}
 
 			# Store info about user in the provider metadata.
@@ -628,6 +639,10 @@ class UserNameSessionProvider extends CookieSessionProvider {
 				return true;
 			}
 		);
+
+		if ( $this->callUserLoggedInHook ) {
+			Hooks::run( 'UserLoggedIn', [ $info->getUserInfo()->getUser() ] );
+		}
 
 		return true;
 	}
