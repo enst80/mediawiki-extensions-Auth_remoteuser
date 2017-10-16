@@ -24,9 +24,9 @@
  *
  * @file
  */
-namespace MediaWiki\Extensions\Auth_remoteuser;
+namespace MediaWiki\Extension\Auth_remoteuser;
 
-use MediaWiki\Extensions\Auth_remoteuser\UserNameSessionProvider;
+use MediaWiki\Extension\Auth_remoteuser\UserNameSessionProvider;
 use Hooks;
 use GlobalVarConfig;
 

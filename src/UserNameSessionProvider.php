@@ -24,7 +24,7 @@
  *
  * @file
  */
-namespace MediaWiki\Extensions\Auth_remoteuser;
+namespace MediaWiki\Extension\Auth_remoteuser;
 
 use MediaWiki\Session\CookieSessionProvider;
 use MediaWiki\Session\SessionBackend;
