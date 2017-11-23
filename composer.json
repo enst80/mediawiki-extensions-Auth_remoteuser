@@ -1,4 +1,46 @@
 {
+	"name": "mediawiki/auth-remoteuser",
+	"extra": {
+		"installer-name": "Auth_remoteuser"
+	},
+	"license": "GPL-2.0+",
+	"type": "mediawiki-extension",
+	"homepage": "https://www.mediawiki.org/wiki/Extension:Auth_remoteuser",
+	"description": "Automatically logs-in users using the REMOTE_USER environment variable",
+	"keywords": [
+		"extension",
+		"wiki",
+		"mediawiki"
+	],
+	"authors": [
+		{
+			"name": "Otheus Shelling",
+			"homepage": "https://en.wikipedia.org/wiki/User:Otheus"
+		},
+		{
+			"name": "Rusty Burchfield",
+			"homepage": "http://www.csh.rit.edu/~gicode"
+		},
+		{
+			"name": "James Kinsman",
+			"homepage": "https://en.wikipedia.org/wiki/User:VibroAxe"
+		},
+		{
+			"name": "Daniel Thomas"
+		},
+		{
+			"name": "Ian Ward Comfort"
+		},
+		{
+			"name": "Mark A. Hershberger",
+			"email": "mah@nichework.com",
+			"role": "Contributor"
+		},
+		{
+			"name": "Stefan Engelhardt",
+			"homepage": "https://wikitech.wikimedia.org/wiki/User:Enst80"
+		}
+	],
 	"require-dev": {
 		"jakub-onderka/php-parallel-lint": "0.9.2",
 		"jakub-onderka/php-console-highlighter": "0.3.2",
