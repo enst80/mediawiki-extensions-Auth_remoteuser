@@ -202,7 +202,21 @@ class UserNameSessionProvider extends CookieSessionProvider {
 
 		# The cookie prefix used by our parent will be the same as our class name to
 		# not interfere with cookies set by other instances of our parent.
-		$prefix = str_replace( '\\', '_', get_class( $this ) );
+		$prefix = get_class( $this );
+		# We must ensure prefix is unique amongst multiple mediawiki instances beneath
+		# the same domain. We do here effectively the same as mediawiki core but
+		# prepend our class name.
+		global $wgSharedDB, $wgSharedPrefix, $wgSharedTables, $wgDBprefix, $wgDBname;
+		if ( $wgSharedDB && $wgSharedPrefix && in_array( 'user', $wgSharedTables ) ) {
+			$prefix = $prefix . '_' . $wgSharedDB . '_' . $wgSharedPrefix;
+		} elseif ( $wgSharedDB && in_array( 'user', $wgSharedTables ) ) {
+			$prefix = $prefix . '_' . $wgSharedDB;
+		} elseif ( $wgDBprefix ) {
+			$prefix = $prefix . '_' . $wgDBname . '_' . $wgDBprefix;
+		} else {
+			$prefix = $prefix . '_' . $wgDBname;
+		}
+		$prefix = strtr( $prefix, '=,; +."\'\\[', '__________' );
 		$params += [
 			'sessionName' => $prefix . '_session',
 			'cookieOptions' => []
