@@ -442,12 +442,22 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			$disableSpecialPages += [
 				'Userlogin',
 				'Userlogout',
-				'CreateAccount',
 				'LinkAccounts',
 				'UnlinkAccounts',
 				'ChangeCredentials',
 				'RemoveCredentials'
 			];
+			# Special page 'CreateAccount' depends on users permission.
+			$user = $info->getUserInfo()->getUser();
+			$permissions = $user->getGroupPermissions( $user->getEffectiveGroups() );
+			if ( !in_array( 'createaccount', $permissions, true ) ) {
+				$disableSpecialPages = array_unique(
+					array_merge(
+						$disableSpecialPages,
+						[ 'CreateAccount' ]
+					)
+				);
+			}
 		}
 
 		# This can only be true, if our `switchUser` member is set to true and the
