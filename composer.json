@@ -1,18 +1,25 @@
 {
 	"name": "mediawiki/auth-remoteuser",
+	"type": "mediawiki-extension",
 	"extra": {
 		"installer-name": "Auth_remoteuser"
 	},
-	"license": "GPL-2.0-or-later",
-	"type": "mediawiki-extension",
-	"homepage": "https://www.mediawiki.org/wiki/Extension:Auth_remoteuser",
 	"description": "Automatically logs-in users if they are already authenticated by a remote source. (e.g. environment variable REMOTE_USER)",
+	"homepage": "https://www.mediawiki.org/wiki/Extension:Auth_remoteuser",
+	"license": "GPL-2.0-or-later",
 	"keywords": [
 		"extension",
 		"wiki",
 		"mediawiki",
 		"authentication"
 	],
+	"support": {
+		"docs": "https://www.mediawiki.org/wiki/Extension:Auth_remoteuser",
+		"wiki": "https://www.mediawiki.org/wiki/Extension:Auth_remoteuser",
+		"source": "https://github.com/wikimedia/mediawiki-extensions-Auth_remoteuser",
+		"forum": "https://www.mediawiki.org/wiki/Extension_talk:Auth_remoteuser",
+		"issues": "https://phabricator.wikimedia.org/tag/mediawiki-extensions-auth_remoteuser/"
+	},
 	"authors": [
 		{
 			"name": "Otheus Shelling",
@@ -45,13 +52,6 @@
 			"role": "Developer"
 		}
 	],
-	"support": {
-		"docs": "https://www.mediawiki.org/wiki/Extension:Auth_remoteuser",
-		"wiki": "https://www.mediawiki.org/wiki/Extension:Auth_remoteuser",
-		"source": "https://github.com/wikimedia/mediawiki-extensions-Auth_remoteuser",
-		"forum": "https://www.mediawiki.org/wiki/Extension_talk:Auth_remoteuser",
-		"issues": "https://phabricator.wikimedia.org/tag/mediawiki-extensions-auth_remoteuser/"
-	},
 	"require": {
 		"php": ">=5.4.0",
 		"composer/installers": "~1.0.1"
