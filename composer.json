@@ -3,7 +3,7 @@
 	"extra": {
 		"installer-name": "Auth_remoteuser"
 	},
-	"license": "GPL-2.0+",
+	"license": "GPL-2.0-or-later",
 	"type": "mediawiki-extension",
 	"homepage": "https://www.mediawiki.org/wiki/Extension:Auth_remoteuser",
 	"description": "Automatically logs-in users if they are already authenticated by a remote source. (e.g. environment variable REMOTE_USER)",
