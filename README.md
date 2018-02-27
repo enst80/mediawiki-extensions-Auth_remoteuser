@@ -32,10 +32,6 @@ Composer add an according require property line to your
 
     "require": { "mediawiki/auth-remoteuser": "~2" }
 
-Now run Composer with:
-
-    composer update --no-dev --prefer-dist mediawiki/auth-remoteuser
-
 Then enable the extension in MediaWiki with adding the following to your
 global configuration file `LocalSettings.php`:
 
