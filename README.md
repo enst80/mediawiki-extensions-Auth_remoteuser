@@ -32,7 +32,7 @@ Composer add an according require property line to your
 
     "require": { "mediawiki/auth-remoteuser": "~2" }
 
-Then run Composer with:
+Now run Composer with:
 
     composer update --no-dev --prefer-dist mediawiki/auth-remoteuser
 
