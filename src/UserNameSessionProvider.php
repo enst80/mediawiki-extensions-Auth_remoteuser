@@ -641,6 +641,11 @@ class UserNameSessionProvider extends CookieSessionProvider {
 		);
 
 		if ( $this->callUserLoggedInHook ) {
+			$session = SessionManager::singleton()->getSessionById( (string)$info->getId(), true, $request );
+			$delay = $session->delaySave();
+			\Wikimedia\ScopedCallback::consume( $delay );
+			$session->set( 'AuthManager:lastAuthId', $info->getUserInfo()->getId() );
+			$session->set( 'AuthManager:lastAuthTimestamp', time() );
 			Hooks::run( 'UserLoggedIn', [ $info->getUserInfo()->getUser() ] );
 		}
 
