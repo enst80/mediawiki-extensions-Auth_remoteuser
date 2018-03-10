@@ -29,6 +29,7 @@ namespace MediaWiki\Extensions\Auth_remoteuser;
 use MediaWiki\Extensions\Auth_remoteuser\UserNameSessionProvider;
 use MediaWiki\Logger\LoggerFactory;
 use Psr\Log\LoggerInterface;
+use WebRequest;
 use Hooks;
 use GlobalVarConfig;
 
@@ -222,6 +223,21 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 	 */
 	public function setLogger( LoggerInterface $logger ) {
 		$this->logger = LoggerFactory::getInstance( 'Auth_remoteuser' );
+	}
+
+	/**
+	 * Extend method with debug log message.
+	 */
+	public function provideSessionInfo( WebRequest $request ) {
+
+		$this->logger->debug(
+			"Running {method} with {count} source(s) for remote user names.",
+			[	"method" => __METHOD__,
+				"count" => count( $this->remoteUserNames )
+			]
+		);
+
+		return parent::provideSessionInfo( $request );
 	}
 
 	/**
