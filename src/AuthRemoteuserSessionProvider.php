@@ -230,10 +230,16 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 	 */
 	public function provideSessionInfo( WebRequest $request ) {
 
+		ob_start();
+		var_dump( $this->remoteUserNames );
+		$debug_dump = ob_get_clean();
+
 		$this->logger->debug(
-			"Running {method} with {count} source(s) for remote user names.",
+			"Running {method} with {count} source(s) for remote user names. " .
+			"var_dump of provided \$wgAuthRemoteuserUserName:\n{dump}",
 			[	"method" => __METHOD__,
-				"count" => count( $this->remoteUserNames )
+				"count" => count( $this->remoteUserNames ),
+				"dump" => $debug_dump
 			]
 		);
 
