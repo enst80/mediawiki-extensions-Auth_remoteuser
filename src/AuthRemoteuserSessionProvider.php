@@ -27,6 +27,8 @@
 namespace MediaWiki\Extensions\Auth_remoteuser;
 
 use MediaWiki\Extensions\Auth_remoteuser\UserNameSessionProvider;
+use MediaWiki\Logger\LoggerFactory;
+use Psr\Log\LoggerInterface;
 use Hooks;
 use GlobalVarConfig;
 
@@ -209,6 +211,17 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 		}
 
 		parent::__construct( $params );
+	}
+
+	/**
+	 * Log to extension specific channel.
+	 *
+	 * Overwrite this method because the SessionManager would reset it otherwise
+	 * with its own logger object (default channel "session") when initializing
+	 * this SessionProvider.
+	 */
+	public function setLogger( LoggerInterface $logger ) {
+		$this->logger = LoggerFactory::getInstance( 'Auth_remoteuser' );
 	}
 
 	/**
