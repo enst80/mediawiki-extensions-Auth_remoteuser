@@ -37,7 +37,6 @@ use Sanitizer;
 use User;
 use Closure;
 use Title;
-use Wikimedia\ScopedCallback;
 
 /**
  * MediaWiki session provider for arbitrary user name sources.
@@ -654,7 +653,11 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			$session->set( 'AuthManager:lastAuthId', $info->getUserInfo()->getId() );
 			$session->set( 'AuthManager:lastAuthTimestamp', time() );
 			$session->persist();
-			ScopedCallback::consume( $delay );
+			# Destroy scoped callback.
+			#
+			# @see \ScopedCallback::consume() for MW REL1.27
+			# @see \Wikimedia\ScopedCallback::consume() for MW >=REL1.28
+			$delay = null;
 
 			Hooks::run( 'UserLoggedIn', [ $info->getUserInfo()->getUser() ] );
 
