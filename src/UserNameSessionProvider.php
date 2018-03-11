@@ -641,11 +641,12 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			}
 		);
 
+		# Before running the hook prepare the session accordingly as the AuthManager
+		# would have done this.
+		#
+		# @see AuthManager::setSessionDataForUser()
+		# @see AuthManager::securitySensitiveOperationStatus()
 		if ( $this->callUserLoggedInHook ) {
-			# Before running the hook prepare the session accordingly as it would have
-			# been done by the AuthManager.
-			#
-			# @see AuthManager::setSessionDataForUser()
 			$session = $this->manager->getSessionFromInfo( $info, $request );
 			$delay = $session->delaySave();
 			$session->set( 'AuthManager:lastAuthId', $info->getUserInfo()->getId() );
