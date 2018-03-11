@@ -647,13 +647,17 @@ class UserNameSessionProvider extends CookieSessionProvider {
 		# @see AuthManager::setSessionDataForUser()
 		# @see AuthManager::securitySensitiveOperationStatus()
 		if ( $this->callUserLoggedInHook ) {
+
 			$session = $this->manager->getSessionFromInfo( $info, $request );
 			$delay = $session->delaySave();
+			$session->resetAllTokens();
 			$session->set( 'AuthManager:lastAuthId', $info->getUserInfo()->getId() );
 			$session->set( 'AuthManager:lastAuthTimestamp', time() );
+			$session->persist();
 			ScopedCallback::consume( $delay );
 
 			Hooks::run( 'UserLoggedIn', [ $info->getUserInfo()->getUser() ] );
+
 		}
 
 		return true;
