@@ -640,8 +640,8 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			}
 		);
 
-		# Before running the hook prepare the session accordingly as the AuthManager
-		# would have done this.
+		# Before running the hook, prepare the session by mirroring the steps
+		# normally performed by the AuthManager.
 		#
 		# @see AuthManager::setSessionDataForUser()
 		# @see AuthManager::securitySensitiveOperationStatus()
