@@ -447,18 +447,17 @@ class UserNameSessionProvider extends CookieSessionProvider {
 				'ChangeCredentials',
 				'RemoveCredentials'
 			];
-			# Special page 'CreateAccount' depends on users permission `createaccount`.
+			# Special page 'CreateAccount' depends on the `createaccount` permission.
 			#
 			# If `self::switchUser` is `false` a user with this permission can still
 			# access this page and create accounts, but won't be logged-in to the newly
 			# created one.
 			#
-			# Making access to this page dependent of users permission is useful for
-			# wikis where only a subset of all remotely authenticated users should
-			# become logged-in automatically (the extension is not allowed to create
-			# accounts for all users) and user switching is forbidden. A wiki admin
-			# with the according permission can then access this page to create accounts
-			# explicitly.
+			# Making access to this page dependent on permissions is useful for wikis
+			# where only a subset of all remotely authenticated users should become
+			# logged-in automatically (when the extension is not configured to create
+			# accounts for all users) and user switching is forbidden. A wiki admin with
+			# this permission can then access this page to create accounts explicitly.
 			$user = $info->getUserInfo()->getUser();
 			$permissions = $user->getGroupPermissions( $user->getEffectiveGroups() );
 			if ( !in_array( 'createaccount', $permissions, true ) &&
