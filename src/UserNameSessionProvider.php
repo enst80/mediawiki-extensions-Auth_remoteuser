@@ -217,7 +217,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			'sessionName' => $wgSessionName ?: ( $wgCookiePrefix . $classname . '_session' ),
 			'cookieOptions' => []
 		];
-		$params[ 'cookieOptions' ] += [	'prefix' => $wgCookiePrefix ];
+		$params[ 'cookieOptions' ] += [ 'prefix' => $wgCookiePrefix ];
 		$params[ 'cookieOptions' ][ 'prefix' ] .= $classname;
 
 		# Let our parent sanitize the rest of the configuration.
