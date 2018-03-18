@@ -200,20 +200,25 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			$this->{ $key } = $value;
 		}
 
-		# The cookie prefix used by our parent will be the same as our class name to
-		# not interfere with cookies set by other instances of our parent. And we
-		# ensure prefix is unique amongst multiple mediawiki instances beneath the
-		# same domain. Therefore we use `$wgCookiePrefix` from MediaWiki core which
-		# distinguishes between different instances by default (@see Setup.php) and
-		# prepend our class name.
-		global $wgCookiePrefix;
-		$prefix = get_class( $this ) . "_${wgCookiePrefix}_";
-		$prefix = strtr( $prefix, '=,; +."\'\\[', '__________' );
+		# Because our parent is used by default in every MediaWiki we must rename
+		# cookie variables to not interfere with other instances of our parent. We
+		# achieve this by appending our class name to each variable name's prefix.
+		#
+		# And we must ensure that the new cookie variable names are unique amongst
+		# multiple MediaWiki instances beneath the same domain. Therefore we use the
+		# global `$wgCookiePrefix` which creates this uniqueness by default in
+		# MediaWiki core (@see `Setup.php`).
+		#
+		# But we leave the cookie variable name for the session id untouched if the
+		# global `$wgSessionName` is set.
+		global $wgSessionName, $wgCookiePrefix;
+		$classname = str_replace( '\\', '', get_class( $this ) );
 		$params += [
-			'sessionName' => $prefix . 'session',
+			'sessionName' => $wgSessionName ?: ( $wgCookiePrefix . $classname . '_session' ),
 			'cookieOptions' => []
 		];
-		$params[ 'cookieOptions' ] += [ "prefix" => $prefix ];
+		$params[ 'cookieOptions' ] += [	'prefix' => $wgCookiePrefix ];
+		$params[ 'cookieOptions' ][ 'prefix' ] .= $classname;
 
 		# Let our parent sanitize the rest of the configuration.
 		parent::__construct( $params );
