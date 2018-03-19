@@ -203,6 +203,8 @@ class UserNameSessionProvider extends CookieSessionProvider {
 		# Because our parent is used by default in every MediaWiki we must rename
 		# cookie variables to not interfere with other instances of our parent. We
 		# achieve this by appending our class name to each variable name's prefix.
+		# Using our class name as a so-called provider prefix enables subclasses of
+		# our own to not have to overwrite this part.
 		#
 		# And we must ensure that the new cookie variable names are unique amongst
 		# multiple MediaWiki instances beneath the same domain. Therefore we use the
@@ -211,14 +213,29 @@ class UserNameSessionProvider extends CookieSessionProvider {
 		#
 		# But we leave the cookie variable name for the session id untouched if the
 		# global `$wgSessionName` is set.
+		#
+		# Due to cookie length limitation (see RFC6265 section Limits) the overall
+		# size (cookie name, value and attributes of all! cookies beneath the same
+		# domain) should not exceed 4096 bytes. But our full class name (namespace
+		# plus class name) we selected as our provider prefix takes up to 67 bytes
+		# already. Each instance of our class sets at least 5 different cookies with
+		# this prefix. And if there are multiple MediaWiki instances beneath the same
+		# domain (think of language specific subdomains like Wikipedia) this cookie
+		# length limitation will be reached quickly if a user is using many of these
+		# MediaWiki instances at the same time. Therefore we downsize our provider
+		# prefix by using a hash function (a simple and fast one which produces a
+		# short result is enough, because a hash collision is unlikely in MediaWiki
+		# instances where a subclass of our own is used as another session provider).
+		#
+		# @see https://tools.ietf.org/html/rfc6265#section-6.1
 		global $wgSessionName, $wgCookiePrefix;
-		$classname = str_replace( '\\', '', get_class( $this ) );
+		$providerprefix = dechex( crc32( get_class( $this ) ) );
 		$params += [
-			'sessionName' => $wgSessionName ?: ( $wgCookiePrefix . $classname . '_session' ),
+			'sessionName' => $wgSessionName ?: ( $wgCookiePrefix . $providerprefix . '_session' ),
 			'cookieOptions' => []
 		];
 		$params[ 'cookieOptions' ] += [ 'prefix' => $wgCookiePrefix ];
-		$params[ 'cookieOptions' ][ 'prefix' ] .= $classname;
+		$params[ 'cookieOptions' ][ 'prefix' ] .= $providerprefix;
 
 		# Let our parent sanitize the rest of the configuration.
 		parent::__construct( $params );
