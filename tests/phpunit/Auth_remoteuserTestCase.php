@@ -29,7 +29,6 @@ namespace MediaWiki\Extensions\Auth_remoteuser\Tests;
 use MediaWiki\Extensions\Auth_remoteuser\AuthRemoteuserSessionProvider;
 use MediaWiki\Session\SessionManager;
 use MediaWiki\Auth\AuthManager;
-use Wikimedia\TestingAccessWrapper;
 use PHPUnit_Framework_TestResult;
 use MediaWikiTestCase;
 use MWException;
@@ -114,34 +113,53 @@ abstract class Auth_remoteuserTestCase extends MediaWikiTestCase {
 	 */
 	public function run( PHPUnit_Framework_TestResult $result = null ) {
 
-		$this->stashMwGlobals( [
-			// MW options
-			'wgGroupPermissions',
-			// extension options
-			'wgAuthRemoteuserUserName',
-			'wgAuthRemoteuserUserNameReplaceFilter',
-			'wgAuthRemoteuserUserNameBlacklistFilter',
-			'wgAuthRemoteuserUserNameWhitelistFilter',
-			'wgAuthRemoteuserUserPrefs',
-			'wgAuthRemoteuserUserPrefsForced',
-			'wgAuthRemoteuserUserUrls',
-			'wgAuthRemoteuserAllowUserSwitch',
-			'wgAuthRemoteuserRemoveAuthPagesAndLinks',
-			'wgAuthRemoteuserPriority',
+		$extensionOptions = [
+			'wgAuthRemoteuserUserName' => null,
+			'wgAuthRemoteuserUserNameReplaceFilter' => null,
+			'wgAuthRemoteuserUserNameBlacklistFilter' => null,
+			'wgAuthRemoteuserUserNameWhitelistFilter' => null,
+			'wgAuthRemoteuserUserPrefs' => null,
+			'wgAuthRemoteuserUserPrefsForced' => null,
+			'wgAuthRemoteuserUserUrls' => null,
+			'wgAuthRemoteuserAllowUserSwitch' => false,
+			'wgAuthRemoteuserRemoveAuthPagesAndLinks' => true,
+			'wgAuthRemoteuserPriority' => 50,
 			// legacy extension options
-			'wgAuthRemoteuserAuthz',
-			'wgAuthRemoteuserName',
-			'wgAuthRemoteuserMail',
-			'wgAuthRemoteuserNotify',
-			'wgAuthRemoteuserDomain',
-			'wgAuthRemoteuserMailDomain'
-		] );
+			'wgAuthRemoteuserAuthz' => true,
+			'wgAuthRemoteuserName' => null,
+			'wgAuthRemoteuserMail' => null,
+			'wgAuthRemoteuserNotify' => false,
+			'wgAuthRemoteuserDomain' => null,
+			'wgAuthRemoteuserMailDomain' => null
+		];
+		# `MediaWikiTestCase::stashMwGlobals()@REL1.27` throws exception when global
+		# is not set. So stash only the existing globals.
+		$stash = [ 'wgGroupPermissions' ];
+		foreach ( $extensionOptions as $key => $value ) {
+			if ( array_key_exists( $key, $GLOBALS ) ) {
+				$stash[] = $key;
+			}
+		}
+		$this->stashMwGlobals( $stash );
+
+		# Prepare extension test fixture.
+		foreach ( $extensionOptions as $key => $value ) {
+			if ( array_key_exists( $key, $GLOBALS ) ) {
+			}
+		}
+		global $wgGroupPermissions;
+		$wgGroupPermissions[ '*' ][ 'createaccount' ] = true;
+		$wgGroupPermissions[ '*' ][ 'autocreateaccount' ] = true;
 
 		$this->setUpSessionProvider();
 
 		return parent::run( $result );
 	}
 
+	/**
+	 * Subclasses must implement this method to setup their session provider test
+	 * fixture instead of default `self::setUp()`.
+	 */
 	abstract protected function setUpSessionProvider();
 
 	/**
