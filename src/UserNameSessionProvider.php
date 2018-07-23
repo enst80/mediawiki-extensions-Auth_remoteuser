@@ -54,7 +54,7 @@ use Title;
  * only.
  *
  * @see CookieSessionProvider::provideSessionInfo()
- * @version 2.0.1
+ * @version 2.1.0
  * @since 2.0.0
  */
 class UserNameSessionProvider extends CookieSessionProvider {
