@@ -54,7 +54,7 @@ use Title;
  * only.
  *
  * @see CookieSessionProvider::provideSessionInfo()
- * @version 2.1.0
+ * @version 2.1.1
  * @since 2.0.0
  */
 class UserNameSessionProvider extends CookieSessionProvider {
@@ -147,6 +147,18 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	protected $callUserLoggedInHook = false;
 
 	/**
+	 * Trust a session cookie to restore the session even if no remote user name
+	 * is given? Take care of the logout functionality then, because trusting a
+	 * cookie restores a session even when the user logged out iat the remote
+	 * source only. He will still be logged in then. Set this to false again to
+	 * delete any existing session cookies when no remote user name is given.
+	 *
+	 * @var boolean
+	 * @since 2.1.1
+	 */
+	protected $trustSessionCookie;
+
+	/**
 	 * The constructor processes the class configuration.
 	 *
 	 * In addition to the keys of the parents constructor parameter `params` this
@@ -159,6 +171,7 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	 * * `userUrls` - @see self::$userUrls
 	 * * `switchUser` - @see self::$switchUser
 	 * * `removeAuthPagesAndLinks` - @see self::$removeAuthPagesAndLinks
+	 * * `trustSessionCookie` - @see self::$trustSessionCookie
 	 *
 	 * @since 2.0.0
 	 */
@@ -171,7 +184,8 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			'userPrefsForced' => null,
 			'userUrls' => null,
 			'switchUser' => false,
-			'removeAuthPagesAndLinks' => true
+			'removeAuthPagesAndLinks' => true,
+			'trustSessionCookie' => false
 		];
 
 		# Sanitize configuration and apply to own members.
@@ -259,6 +273,15 @@ class UserNameSessionProvider extends CookieSessionProvider {
 	 */
 	public function provideSessionInfo( WebRequest $request ) {
 
+		# Let our parent class find a valid SessionInfo (from cookies).
+		$sessionInfo = parent::provideSessionInfo( $request );
+
+		# Stores info about user authentication.
+		$metadata = [];
+
+		# Do we trust the sessionInfo object already?
+		$trustSessionInfo = $this->trustSessionCookie;
+
 		# Loop through user names given by all remote sources. First hit, which
 		# matches a usable local user name, will be used for our SessionInfo then.
 		foreach ( $this->remoteUserNames as $remoteUserName ) {
@@ -331,9 +354,6 @@ class UserNameSessionProvider extends CookieSessionProvider {
 			}
 			$metadata[ 'userId' ] = $userInfo->getId();
 			$metadata[ 'canonicalUserName' ] = $userInfo->getName();
-
-			# Let our parent class find a valid SessionInfo.
-			$sessionInfo = parent::provideSessionInfo( $request );
 
 			# Our parent class provided a session info, but the `$wgGroupPermission` for
 			# creating user accounts was changed while using this extension. This leds
@@ -420,19 +440,40 @@ class UserNameSessionProvider extends CookieSessionProvider {
 				$this->callUserLoggedInHook = true;
 			}
 
-			# Store info about user in the provider metadata.
-			$metadata[ 'canonicalUserNameUsed' ] = $sessionInfo->getUserInfo()->getName();
+			$trustSessionInfo = true;
+			break;
+		}
+
+		# Delete session cookie if it exists but is not trusted!
+		if ( $sessionInfo && !$trustSessionInfo ) {
+			$sessionInfo = null;
+			$this->unpersistSession( $request );
+		}
+
+		if ( $sessionInfo && $trustSessionInfo ) {
+
+			# If sessionInfo came from a cookie only (no remote user name specified),
+			# than we must provide the missing metadata fields from cookie values,
+			# which otherwise would have been set by the evaluation loop for remote
+			# user names.
+			$prefix = $this->cookieOptions[ 'prefix' ];
+			$metadata += [
+				'userId' => $sessionInfo->getUserInfo()->getId(),
+				'remoteUserName' => $this->getCookie( $request, 'RemoteToken', $prefix ) . '@COOKIE',
+				'filteredUserName' => $this->getCookie( $request, 'RemoteToken', $prefix ),
+				'canonicalUserName' => $sessionInfo->getUserInfo()->getName() . '@COOKIE',
+				'canonicalUserNameUsed' => $sessionInfo->getUserInfo()->getName()
+			];
+
+			# Store info about user in provider metadata.
 			$sessionInfo = new SessionInfo( $sessionInfo->getPriority(), [
 				'copyFrom' => $sessionInfo,
 				'metadata' => $metadata
 				]
 			);
-
-			return $sessionInfo;
 		}
 
-		# We didn't identified anything, so let other SessionProviders do their work.
-		return null;
+		return $sessionInfo;
 	}
 
 	/**

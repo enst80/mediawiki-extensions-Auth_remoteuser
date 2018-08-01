@@ -33,7 +33,7 @@ use GlobalVarConfig;
 /**
  * Session provider for the Auth_remoteuser extension.
  *
- * @version 2.1.0
+ * @version 2.1.1
  * @since 2.0.0
  */
 class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
@@ -67,6 +67,7 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 	 * * `$wgAuthRemoteuserUserUrls`
 	 * * `$wgAuthRemoteuserAllowUserSwitch`
 	 * * `$wgAuthRemoteuserRemoveAuthPagesAndLinks`
+	 * * `$wgAuthRemoteuserTrustSessionCookie`
 	 * * `$wgAuthRemoteuserPriority`
 	 *
 	 * @since 2.0.0
@@ -85,6 +86,7 @@ class AuthRemoteuserSessionProvider extends UserNameSessionProvider {
 			'UserUrls' => 'userUrls',
 			'AllowUserSwitch' => 'switchUser',
 			'RemoveAuthPagesAndLinks' => 'removeAuthPagesAndLinks',
+			'TrustSessionCookie' => 'trustSessionCookie',
 			'Priority' => 'priority'
 		];
 
